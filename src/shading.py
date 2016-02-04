@@ -23,8 +23,7 @@ indices = [11,12,13,14,15,21,22,23,24,25,31,32,33,34,35,41,42,43,\
 
 for index in indices:
   if (not isfile('data/shading/5x5/'+str(index)+'.txt')):
-    exit('warning: shading tables not found in data/shading/5x5' \
-    ' not using shading\n')
+    exit('warning: shading tables not found in data/shading/5x5\n')
 
 shading = [np.loadtxt('data/shading/5x5/'+str(index)+'.txt') \
   for index in indices]
@@ -36,8 +35,7 @@ Two different sets of studio shading tables
 #   for index in range(12)] 
 for index in range(0,6):
   if (not isfile('data/shading/studio/module'+str(index+1)+'.txt')):
-    exit('warning: shading tables not found in data/shading/studio/module' \
-    ' not using shading\n')
+    exit('error shading tables not found in data/shading/studio\n')
 
 studioShading = [np.loadtxt('data/shading/studio/module'+str(index+1)+'.txt') 
   for index in range(0,6)] 
