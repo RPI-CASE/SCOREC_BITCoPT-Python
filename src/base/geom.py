@@ -364,7 +364,7 @@ class GeometrySet(object):
       if self.g.index(A) != self.g.index(B) 
       and A.dir == B.dir 
       and np.dot(A.n,B.n) > 1e-5
-      and max([c[2] for c in B]) >= min_z)]
+      and max([c[2] for c in B]) >= min_z]
 
       secondpass = []
       for B in firstpass:

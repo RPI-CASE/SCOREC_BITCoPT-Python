@@ -23,7 +23,7 @@ from scipy.optimize import fsolve
 from scipy.integrate import odeint
 from collections import OrderedDict
 from sys import exit
-from np import array
+from numpy import array
 try:
   from numdifftools import nd
   JACOBIAN = True
