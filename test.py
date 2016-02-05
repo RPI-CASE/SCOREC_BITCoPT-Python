@@ -25,7 +25,7 @@ def runGeometryTest():
   timezone = -5
   solar.setTimezone(timezone)
   solar.setLocation(latitude,longitude)
-  geometry = cg.readFile('data/geometry/mytilt0.txt',"test")
+  geometry = cg.readFile('data/geometry/whole-building.txt',"whole-building")
   geom = geometry[13]
   nS = -shading.getSolarVectorAtTime(11.5*3600)
   assert abs(geometry.getUnshadedFraction(geom,nS) - 0.5097854) < 1e-6, \

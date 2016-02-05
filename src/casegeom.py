@@ -19,11 +19,10 @@ from collections import defaultdict
 
 """
 readFile:       reads from the original file format,
-                with coordinates in {x0,y0,z0},{x1,y1,z1}, ...
+                with coordinates in {x0,y0,z0} {x1,y1,z1}  ...
                 on a single line
 
-                this is the only part of this code I see in obvious need
-                to change, as better geometry inputs are provided
+                each line is  a single facade, see data/geometry/whole-building.txt
 
 input(s):       filename, geometry name
 output(s):      GeometrySet object
