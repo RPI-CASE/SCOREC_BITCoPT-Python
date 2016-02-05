@@ -77,7 +77,7 @@ def runSolarTest():
   assert (winterAngle['declination'] < summerAngle['declination']), \
     "Unexpected: testing delication - sun is not higher in summer than winter"
 
-  geometry = cg.readFile('data/geometry/mytilt0.txt',"test")
+  geometry = cg.readFile('data/geometry/whole-building.txt',"whole-building")
   geom = geometry[13]
   # JS: I do not like this test because as we change geometry it will break but it's here. 
   # assert abs(solar.getAOI(noonAngles,geom) - solar.getAOICheck(noonAngles,0.0,(60*np.pi/180.))) < 1e-6, \
