@@ -30,7 +30,7 @@ def airRho(B):
 def airCp(B):
   return 1005.0 # J/kg/K
 def receiverh(B): # W/K
-  return 1./(0.2 + 0.2487*(B.P['mdot']/(waterRho(B)*1e-6))**(-0.773))
+  return 1./(0.2 + 0.2487*(B.p['mdot']/(waterRho(B)*1e-6))**(-0.773))
 def receivermCp(B):
   return 4.14 # J/K
 
@@ -64,10 +64,10 @@ def heatCondExterior(B,N,P):
   return {'T':(B['T']-N['T'])*0.5233*P['L']} # W/K
 
 def heatConv(B,N,P):
-  return {'T':B.P['mdot']*B.m['Cp'](B)*(B['T']-N['T'])}
+  return {'T':B.p['mdot']*B.P['Cp'](B)*(B['T']-N['T'])}
 def heatConvDevice(B,N,P):
   return {'T':receiver['mCp'](B)/receiver['h'](B)/P['dt'] \
-    *B.P['mdot']*B.m['Cp'](B)*(B['T']-N['T'])}
+    *B.p['mdot']*B.P['Cp'](B)*(B['T']-N['T'])}
 
 """
 getGapTransmittance:

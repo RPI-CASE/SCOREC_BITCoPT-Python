@@ -72,20 +72,16 @@ def solve(init):
   else:
     previousWaterFlowRate = init['previousWaterFlowRate']
 
-  # Inlet blocks
-  waterInlet = b.Block('waterInlet',constWater,T = init['waterT'])
-  airInlet = b.Block('airInlet',constAir,T = init['airT'])
-
-  # We will need mass flow rates for our fluxes,
-  # These are added to the class object, and are not part of the
-  # default block requirement
-
-  waterInlet.mdot = init['waterFlowRate']
-  airInlet.mdot = init['airFlowRate']
+  # Inlet blocks, the material is a dictionary of parameter functions,
+  # and mass flow rate is just a material
+  waterInlet = b.Block('waterInlet',{'T':init['waterT']},constWater,\
+    {'mdot':init['waterFlowRate']})
+  airInlet = b.Block('airInlet',{'T':init['airT']},constAir,\
+    {'mdot':init['airFlowRate']})
 
   # exterior and interior regions
-  airExt = b.Block('Exterior','air',T = init['airExterior'])
-  airInt = b.Block('Interior','air',T = init['airInterior'])
+  airExt = b.Block('Exterior',{'T':init['airExterior']})
+  airInt = b.Block('Interior',{'T':init['airInterior']})
 
   waterModule = []
   airModule = []
@@ -95,13 +91,13 @@ def solve(init):
   # initialize all regions
   for i in range(init['numModules']):
     waterModule.append(b.Block('waterModule_'+str(i),
-      constWater,T = init['waterT']))
+      {'T':init['waterT']},constWater,{'mdot':init['waterFlowRate']}))
     airModule.append(b.Block('airModule_'+str(i),
-      constAir,T = init['airT']))   
+      {'T':init['airT']},constAir,{'mdot':init['airFlowRate']}))   
     waterTube.append(b.Block('waterTube_'+str(i),
-      constWater,T = init['waterT']))
+      {'T':init['waterT']},constWater,{'mdot':init['waterFlowRate']}))
     airTube.append(b.Block('airTube_'+str(i),
-      constAir,T = init['airT']))
+      {'T':init['airT']},constAir,{'mdot':init['airFlowRate']}))
   
   # now set up tube regions
   for i in range(init['numModules']):
@@ -116,14 +112,8 @@ def solve(init):
     if('Q_c' in init.keys()):
       airModule[i].addSource(s.Source('const',T = -init['Q_c'][i]))
 
-    airTube[i].mdot = init['airFlowRate']
-    waterTube[i].mdot = init['waterFlowRate']
   # now set the module regions
   for i in range(init['numModules']):
-    # Q_w from DNI or Q_d
-
-    airModule[i].mdot = init['airFlowRate']
-    waterModule[i].mdot = init['waterFlowRate']
 
     # Energy source
     if('Q_w' in init.keys() and 'Q_d' not in init.keys()):
@@ -136,7 +126,7 @@ def solve(init):
 
     #  previous temp change due to receiver
     waterModule[i].addSource(s.Source(s.constant,{'T':-receiver['mCp'](waterModule[i])/\
-      receiver['h'](waterModule[i])/dt*waterModule[i].mdot*waterCp(waterModule[i])*\
+      receiver['h'](waterModule[i])/dt*init['waterFlowRate']*waterCp(waterModule[i])*\
       (init['previousWaterModuleT'][i]-init['previousWaterTubeT'][i])}))
 
     tempChangeInTimeCoeff = receiver['mCp'](waterModule[i])/dt
@@ -154,7 +144,6 @@ def solve(init):
 
     # Q_a from DNI
     airModule[i].addSource(s.Source(s.constant,{'T':-init['Q_a'][i]}))
-
 
 
   # connect up the regions
@@ -176,7 +165,7 @@ def solve(init):
     blocksToSolve.append(airModule[i])
     blocksToSolve.append(waterModule[i])
   ICSolar = p.Problem(blocksToSolve)
-  ICSolar.setBand((2,2))
+  # ICSolar.setBand((2,2))
   ICSolar.solve()
 
   results = {}
@@ -188,7 +177,7 @@ def solve(init):
     for i in range(init['numModules'])])
   results['airTube'] = np.array([airTube[i]['T'] 
     for i in range(init['numModules'])])
-  results['receiver'] = np.array([waterInlet.mdot*waterCp(waterModule[i]) \
+  results['receiver'] = np.array([init['waterFlowRate']*waterCp(waterModule[i]) \
     /receiver['h'](waterInlet)*(results['waterModule'][i]-results['waterTube'][i]) \
     + results['waterModule'][i] for i in range(init['numModules'])])
   global _solverTime
