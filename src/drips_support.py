@@ -66,7 +66,7 @@ def qw(B):
   mwsat = 0.37*(C-0.44)**0.82*75.0
   # if(mwsat-B.mw) < 0.:
   #   return 0.
-  return (mwsat-B.P['mw'])*0.69314718056/(_thalf)
+  return (mwsat-B.p['mw'])*0.69314718056/(_thalf)
 
 def heatConvDesiccant(B,N,P):
 

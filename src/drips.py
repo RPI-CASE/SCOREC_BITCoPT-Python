@@ -48,22 +48,23 @@ def solve(init):
 
   clockTime = cputime.time()
 
-  initial = {'mdot':init['airFlowRate'][0], 
+  initial = {'mdot':init['airFlowRate'][0],
             'mvdot':init['vaporFlowRate'][0],
             'Tw':init['waterT'][0],
-            'Ta1':init['airT1'][0], 
+            'Ta1':init['airT1'][0],
             'Ta2':init['airT2'][0],
             'mwdot':0.}
-  inlet = b.Block('inlet',desiccant,initial,{'mw':0.})
 
-  airInt = b.Block('Interior','air',{Ta1:init['airInterior']})
+  inlet = b.Block('inlet',initial,desiccant,{'mw':0})
+
+  airInt = b.Block('Interior',{'Ta1':init['airInterior']})
 
   dripsBlocks = []
 
   # initialize air regions
   for i in range(1,init['n']+1):
-    dripsBlocks.append(b.Block('dripsBlocks'+str(i),desiccant,
-      initial,{'mw':init['mw'][i]}))
+    dripsBlocks.append(b.Block('dripsBlocks'+str(i),
+      initial,desiccant,{'mw':init['mw'][i]}))
 
   for i in range(1,init['n']):
     dripsBlocks[i].addFlux(f.Flux(dripsBlocks[i-1],airMassFlux))
@@ -73,7 +74,7 @@ def solve(init):
     dripsBlocks[i].addFlux(f.Flux(airInt,heatCondInterior,{'L':L}))
 
   dripsBlocks[0].addFlux(f.Flux(inlet,airMassFlux))
-  dripsBlocks[0].addFlux(f.Flux(inlet,heatConvdripsBlocksiccant))
+  dripsBlocks[0].addFlux(f.Flux(inlet,heatConvDesiccant))
   dripsBlocks[0].addSource(s.Source(heatConvAirVapor))
   dripsBlocks[0].addSource(s.Source(heatConvWater))
   dripsBlocks[0].addFlux(f.Flux(airInt,heatCondInterior,{'L':L}))

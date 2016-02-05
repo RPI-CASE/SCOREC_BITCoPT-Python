@@ -34,18 +34,21 @@ class Block(object):
 
   input(s):   (name) string corresponding to block name
               (initial) dictionary of initial conditions
-              (parameters) dictionary of parameter functions,
+              (parameterFunctions) dictionary of parameter functions,
                 functions that are shared among fluxes/sources,
                 such as material properties
+              (parameters) dictionary of parameters
               (t) time
 
   output(s):  None
   """
 
-  def __init__(self,name,initial,parameters=None,t=0):
+  def __init__(self,name,initial,parameterFunctions=None,\
+    parameters=None,t=0):
     self.name = name
     self.state = OrderedDict(initial)
-    self.P = parameters
+    self.P = parameterFunctions
+    self.p = parameters
     self.F = []
     self.S = [] 
     self.t = t
