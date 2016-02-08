@@ -283,7 +283,7 @@ class GeometrySet(object):
   output(s):  name
   """
   def __repr__(self):
-    return "GeometrySet " + name +" with "+str(len(self))+" surfaces"
+    return "GeometrySet " + self.name +" with "+str(len(self))+" facades"
 
   """
   getMatch:   returns the match or subset list for particular

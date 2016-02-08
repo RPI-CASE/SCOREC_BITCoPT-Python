@@ -165,7 +165,7 @@ def solve(init):
     blocksToSolve.append(airModule[i])
     blocksToSolve.append(waterModule[i])
   ICSolar = p.Problem(blocksToSolve)
-  # ICSolar.setBand((2,2))
+  ICSolar.setBand((2,2))
   ICSolar.solve()
 
   results = {}

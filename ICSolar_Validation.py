@@ -32,7 +32,7 @@ def run(name,nicename):
   geometry = casegeom.createSimpleGeometry(-40*np.pi/180.,0)
   ############################################### set up results 
 
-
+  # initialize results
   moduleTemp = [np.zeros(numTS),np.zeros(numTS),np.zeros(numTS),
     np.zeros(numTS),np.zeros(numTS),np.zeros(numTS)]
   tubeTemp = [np.zeros(numTS),np.zeros(numTS),np.zeros(numTS),
@@ -76,10 +76,11 @@ def run(name,nicename):
     
     shadeTime[ts] = shade[5]
 
+    # Uncomment this to use exact energy in as the input, for debugging
     # init['Q_w'] = [data['heatgen_m'+str(7-i)][ts] for i in range(1,7)]
     # assume 30% electrical efficiency
     init['Q_d'] = 0.57*625.5*0.0001*data['DNI'][ts]*shade*(1.-0.30)
-    # set up previous temperature
+    # set up previous temperature, if we can
     if (ts == 0):
       init['previousWaterModuleT'] = init['waterT']*np.ones(6)
       init['previousWaterTubeT'] = init['waterT']*np.ones(6)
