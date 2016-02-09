@@ -30,7 +30,7 @@ def solve(inputs):
   startDay = inputs['range'][0]
   endDay = inputs['range'][1]
   DNI = inputs['DNI']
-  extAirT = inputs['extAirT']
+  exteriorAirTemp = inputs['exteriorAirTemp']
   DHI = inputs['DHI']
   
   days = endDay - startDay
@@ -48,9 +48,9 @@ def solve(inputs):
   # 2.0 m/s * 0.16, cross sectional area, times density
   airFlowRate = 2.0*0.16*1.200 # kg/s
 
-  init = {'dt':3600.,'length':icsolar.moduleH,'waterFlowRate':waterFlowRate,
+  init = {'dt':3600.,'length':icsolar.moduleHeight,'waterFlowRate':waterFlowRate,
   'airFlowRate':airFlowRate,'inletWaterTemp':inletWaterTemp,'inletAirTemp':inletAirTemp,
-  'airInterior':interiorAirTemp}
+  'interiorAirTemp':interiorAirTemp}
 
   ############################################### set up results 
   if not os.path.exists('Results/'+directory):
@@ -116,7 +116,7 @@ def solve(inputs):
 
     # once the first daytime hits, we are done initializing
     time = init['dt']*ts
-    init['airExterior'] = extAirT[ts-startStep]
+    init['exteriorAirTemp'] = exteriorAirTemp[ts-startStep]
 
     # solarVector
     sunPosition = solar.getSunPosition(time)
@@ -128,7 +128,7 @@ def solve(inputs):
       # this index, it is the first one that needs to be solved
       # otherwise, don't waste time solving this
       if not matches or geometry.index(matches[0]) > index:
-        g.data['airTExternal'] = np.ones(g.nY)*extAirT[ts-startStep]
+        g.data['airTExternal'] = np.ones(g.nY)*exteriorAirTemp[ts-startStep]
         if(DNI[ts-startStep] == 0 and DHI[ts-startStep] == 0):
           sunlit = 0.
           averaged = True
@@ -194,7 +194,7 @@ def solve(inputs):
         init['Q_d'] = 0.866*625.5*0.0001*g.data['DNIatModule']*(1.-eta)
         init['Q_a'] = np.zeros(g.nY)
         # (Q_c,Q_I) = support.getRadiativeGain(sunPosition,g,g.data['DNIatModule'],g.data['DHIatModule'])
-        # init['Q_c'] = g.data['DHIatModule']*icsolar.moduleH*icsolar.moduleW
+        # init['Q_c'] = g.data['DHIatModule']*icsolar.moduleHeight*icsolar.moduleWidth
         init['numModules'] = g.nY
         
         # set up previous temperature
@@ -278,12 +278,12 @@ def loadBalance(days,startDay,numProc,DNI):
 
 def run(init):
   ############################################### data loading 
-  (DNI,extAirT,DHI,timezone,lat,lon,city) = weather.readTMY(init['TMY'])
+  (DNI,exteriorAirTemp,DHI,timezone,lat,lon,city) = weather.readTMY(init['TMY'])
   solar.setTimezone(timezone)
   solar.setLocation(lat,lon)
   geometry = casegeom.readFile(init['geomfile'],"ICSolar",
     init['useSunlitFraction'])
-  geometry.computeBlockCounts(icsolar.moduleH,icsolar.moduleW)
+  geometry.computeBlockCounts(icsolar.moduleHeight,icsolar.moduleWidth)
 
   dataNames = ['DNI','DNIatModule','DHI','DHIatModule', 'Glazing', \
                'waterModuleT','waterTubeT','inletAirTemp','airTExternal',
@@ -353,7 +353,7 @@ def run(init):
     'useSunlitFraction':init['useSunlitFraction'],
     'writeVTKFiles':init['writeVTKFiles'],
     'DNI':DNI[stepRange],
-    'extAirT':extAirT[stepRange],
+    'exteriorAirTemp':exteriorAirTemp[stepRange],
     'DHI':DHI[stepRange],
     }
     inputs.append(inputDict)

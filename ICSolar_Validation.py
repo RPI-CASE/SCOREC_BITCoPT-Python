@@ -24,7 +24,8 @@ def run(name,nicename):
   ############################################### data loading 
 
   data = casegeom.readValidationFile('data/ICSolar/'+name+'.csv')
-  numTS = len(data['Timestamp'])
+  n = len(data['Timestamp'])
+
   print 'loading data has taken','%.2f' % (cputime.time()-clockStart)
 
   # create a geometry for this case to get solar information off of
@@ -32,27 +33,26 @@ def run(name,nicename):
   geometry = casegeom.createSimpleGeometry(-40*np.pi/180.,0)
   ############################################### set up results 
 
-  # initialize results
-  moduleTemp = [np.zeros(numTS),np.zeros(numTS),np.zeros(numTS),
-    np.zeros(numTS),np.zeros(numTS),np.zeros(numTS)]
-  tubeTemp = [np.zeros(numTS),np.zeros(numTS),np.zeros(numTS),
-    np.zeros(numTS),np.zeros(numTS),np.zeros(numTS)]
-  receiverTemp = [np.zeros(numTS),np.zeros(numTS),np.zeros(numTS),
-    np.zeros(numTS),np.zeros(numTS),np.zeros(numTS)]
+  # initialize results, list of numpy arrays
+  moduleTemp = [np.zeros(n),np.zeros(n),np.zeros(n),
+                np.zeros(n),np.zeros(n),np.zeros(n)]
+  tubeTemp = [np.zeros(n),np.zeros(n),np.zeros(n),
+              np.zeros(n),np.zeros(n),np.zeros(n)]
+  receiverTemp = [np.zeros(n),np.zeros(n),np.zeros(n),
+                  np.zeros(n),np.zeros(n),np.zeros(n)]
 
-  shadeTime = np.zeros(numTS)
   ############################################### pre-computed information
   # this is a lookup table to connect each module to a shading table
   shadingIndices = [0,1,2,3,4,5]
 
   ############################################### input parameters 
-  interiorAirTemp = 20.0
+  interiorAirTemp = 20.0 # Celcius
 
   # 2.0 m/s * 0.16, cross sectional area, times density
   airFlowRate = 2.0*0.16*1.200
 
   # timestep is ten seconds
-  init = {'dt':10.,'length':icsolar.moduleH,'airInterior':interiorAirTemp, 
+  init = {'dt':10.,'length':icsolar.moduleHeight,'interiorAirTemp':interiorAirTemp, 
     'inletAirTemp':interiorAirTemp,'airFlowRate':airFlowRate,
     'numModules':6}
 
@@ -61,11 +61,11 @@ def run(name,nicename):
     os.makedirs('ValidationResults')
   ############################################### solver
 
-  for ts in range(numTS):
+  for ts in range(n):
     # times the length of the step
     clockStepStart = cputime.time()
 
-    init['airExterior'] = data['Tamb'][ts] 
+    init['exteriorAirTemp'] = data['Tamb'][ts] 
     init['inletWaterTemp'] = data['exp_inlet'][ts]
     init['waterFlowRate'] = data['exp_flowrate'][ts]*1000.*1e-6 # kg/s
     time = float(data['Timestamp'][ts])
@@ -73,8 +73,6 @@ def run(name,nicename):
 
     for i in range(6):
       shade[i] = shading.getStudioUnshadedFractionAtTime(time,geometry,shadingIndices[i])
-    
-    shadeTime[ts] = shade[5]
 
     # Uncomment this to use exact energy in as the input, for debugging
     # init['Q_w'] = [data['heatgen_m'+str(7-i)][ts] for i in range(1,7)]
@@ -113,7 +111,7 @@ def run(name,nicename):
     print nicename,'RMS of Temperature for module ',i,'is','%.2f' % T_RMSE[i]
 
   ############################################### plot outputs
-  t = np.arange(numTS)/6. # minutes
+  t = np.arange(n)/6. # minutes
 
   for i in range(6):
 

@@ -34,8 +34,8 @@ from icsolar_support import *
 
 """ module constants here, for lack of better place """
 
-moduleH = 0.3429
-moduleW = 0.2794
+moduleHeight = 0.3429
+moduleWidth = 0.2794
 
 _solverTime = 0.
 """
@@ -46,8 +46,8 @@ input(s):       init, dictionary of physical parameters
                   Q_a,          heat added to air (optional)
                   Q_w or Q_d, heat added to water or device
                     one or the other needs to be present
-                  airExterior,  outside air temperature
-                  airInterior,  inside air temperature
+                  exteriorAirTemp,  outside air temperature
+                  interiorAirTemp,  inside air temperature
                   inletWaterTemp,       inlet water temperature
                   inletAirTemp,         inlet air temperature
                   waterFlowRate,  mass flow rate
@@ -80,8 +80,8 @@ def solve(init):
     {'mdot':init['airFlowRate']})
 
   # exterior and interior regions
-  airExt = b.Block('Exterior',{'T':init['airExterior']})
-  airInt = b.Block('Interior',{'T':init['airInterior']})
+  airExt = b.Block('Exterior',{'T':init['exteriorAirTemp']})
+  airInt = b.Block('Interior',{'T':init['interiorAirTemp']})
 
   waterModule = []
   airModule = []
