@@ -18,6 +18,19 @@ as well as support functions in other files.
 
 All results will end up in Results/<directory name>
 
+There are three ways to get data out of the simulation.
+The names of this data is in the solverInputs  <name>DataNames
+
+There are Paraview VTK files for each module on the facade,
+the data of which is dictated in the geometry, g.data
+
+There are facadeData with facadeDataNames which are per facade
+
+There is directionData with directionDataNames which are per direction
+
+Each of these is defaulted to zero and needs to be
+filled inside the solve function
+
 """
 
 
@@ -37,8 +50,19 @@ is fairly common, and as such is filtered out
 """
 
 import warnings
-warnings.filterwarnings("ignore", message = 'The iteration is not making good progress')
+warnings.filterwarnings("ignore", \
+  message = 'The iteration is not making good progress')
 
+"""
+This takes in two sets of inputs (see __main__ at the bottom)
+and is used per process, in parallel
+
+it also calls icsolar.solve and handles
+solving at each timestep, and keeping track of data
+
+This is where data gets created and stored
+
+"""
 def solve(problemInputs,solverInputs):
 
   ############################################### take data from problemInputs
@@ -60,14 +84,13 @@ def solve(problemInputs,solverInputs):
 
   ############################################### set up results 
 
-
   # this bins things by facade direction
   bins = set([g.dir for g in geometry]);
   bins = list(bins)
   bins.append('total')
 
-  thermal = dict([(bb,np.zeros(timesteps)) for bb in bins])
-  elect = dict([(bb,np.zeros(timesteps)) for bb in bins])
+  directionData = {name:{b:np.zeros(timesteps) for b in bins} \
+    for name in solverInputs['directionDataNames']}
 
   # this collects things by facade number
   facadeBins = range(len(geometry))
@@ -105,9 +128,8 @@ def solve(problemInputs,solverInputs):
     time = solverInputs['dt']*ts
     solverInputs['exteriorAirTemp'] = exteriorAirTemp[ts-startStep]
 
-    # solarVector
     sunPosition = solar.getSunPosition(time)
-    # print time/3600.,"---------------------------------"
+
     for g in geometry:
       index = geometry.index(g)
       matches = geometry.getMatches(g)
@@ -115,14 +137,19 @@ def solve(problemInputs,solverInputs):
       # this index, it is the first one that needs to be solved
       # otherwise, don't waste time solving this
       if not matches or geometry.index(matches[0]) > index:
-        if(DNI[ts-startStep] == 0 and DHI[ts-startStep] == 0):
-          sunlit = 0.
-          averaged = True
-        elif useSunlitFraction is True:
+
+        # averaged -> shading vector applied uniformly, not to top or bottom
+
+        if useSunlitFraction is True:
           (sunlit,averaged) = shading.getMeanSunlitFraction(geometry,g,time,solverInputs['dt'],5)
         else:
-          sunlit = 1.0
+          # if not using sunlit fraction, then just pick 0 or 1
           averaged = True
+          if(DNI[ts-startStep] == 0 and DHI[ts-startStep] == 0):
+            sunlit = 0.
+          else:
+            sunlit = 1.0
+
         # iterate over modules, from bottom to top,
         # computing local shading fractions
         shade = np.ones(g.nY)
@@ -134,6 +161,7 @@ def solve(problemInputs,solverInputs):
         glaze = max(solar.getGlazingTransmitted(sunPosition,g,1),0)
         AOI = solar.getAOI(sunPosition,g)
         (pitch,yaw) = solar.getArrayAngle(sunPosition,g)
+        # lets collect some data
         facadeData['glaze'][index][ts-startStep] = glaze
         facadeData['aoi'][index][ts-startStep] = AOI
         facadeData['yaw'][index][ts-startStep] = yaw
@@ -141,18 +169,23 @@ def solve(problemInputs,solverInputs):
         facadeData['shade'][index][ts-startStep] = shade[int(g.nY/2)] # shading in the middle
         facadeData['dni'][index][ts-startStep] = DNI[ts-startStep]
 
+        # handle the matching facades, the ones we wont solve for, but make sure their data is
+        # properly stored
         for name in ['glaze','aoi','yaw','pitch','shade','dni']:
           for match in matches:
             facadeData[name][geometry.index(match)] = facadeData[name][index]
+
+        # set up air temperature
         g.data['externalAirT'] = np.ones(g.nY)*exteriorAirTemp[ts-startStep]
 
         # don't solve this facade if the sun can't see it, but zero 
         # all data
-
         if(not daytime):
           for name in g.data:
             g.data[name] = np.zeros(g.nY)
           continue
+        # energy per cell in the middle module
+        facadeData['epc'][index][ts-startStep] = 0.866*625.5*0.0001*g.data['DNIatModule'][int(g.nY/2)]
 
         shadedVector = shading.applySunlitFraction(sunlit,g,averaged)
 
@@ -187,23 +220,25 @@ def solve(problemInputs,solverInputs):
         g.data['inletAirTemp'] = results['airModule']
         g.data['receiverT'] = results['receiver']
 
-        # compute the electrical and thermal energy
+        # electrical calculations
         electData = np.sum(solverInputs['eta'] \
           *1e-3*0.866*625.5*0.0001*g.data['DNIatModule'])*g.nX
 
-        elect[g.dir][ts-startStep] += electData*(1+len(matches))
+        directionData['elect'][g.dir][ts-startStep] += electData*(1+len(matches))
         facadeData['elect'][index][ts-startStep] = electData
 
+        # thermal calculations
         thermalData = np.sum(solverInputs['waterFlowRate']*4.218 \
           *(g.data['waterModuleT']-g.data['waterTubeT']))*g.nX
+
         g.data['thermal'] = solverInputs['waterFlowRate']*4.218 \
           *(g.data['waterModuleT']-g.data['waterTubeT'])
-        facadeData['epc'][index][ts-startStep] = 0.866*625.5*0.0001*g.data['DNIatModule'][int(g.nY/2)]
 
         # only add the contribution if its positive
         if(thermalData > 0):
-          thermal[g.dir][ts-startStep] += thermalData*(1+len(matches))
+          directionData['thermal'][g.dir][ts-startStep] += thermalData*(1+len(matches))
           facadeData['thermal'][index][ts-startStep] = thermalData
+        # fill in matching data for thermal, electrical, and epc
         for name in ['thermal','elect','epc']:
           for match in matches:
             facadeData[name][geometry.index(match)] = facadeData[name][index]
@@ -211,15 +246,18 @@ def solve(problemInputs,solverInputs):
     # done with the step        
     previousDayTime = daytime
 
-    thermal['total'][ts-startStep] = sum([thermal[b][ts-startStep] for b in bins])
-    elect['total'][ts-startStep] = sum([elect[b][ts-startStep] for b in bins])
+    # set up directional data by summing over things
+    directionData['thermal']['total'][ts-startStep] = \
+      sum([directionData['thermal'][b][ts-startStep] for b in bins if b is not 'total'])
+    directionData['elect']['total'][ts-startStep] = \
+      sum([directionData['elect'][b][ts-startStep] for b in bins if b is not 'total'])
     # post processing and cleanup
     
     if(daytime and problemInputs['writeVTKFiles']):
-      casegeom.writeVTKfile(geometry,'Results/'+directory+'/geom'+'0'*(4-len(str(ts)))+str(ts)+'.vtk','')
+      casegeom.writeVTKfile(geometry,'Results/'+directory+'/VTK/geom'+'0'*(4-len(str(ts)))+str(ts)+'.vtk','')
  
   print "runtime for days",startDay,"to",startDay+days-1,":",'%.2f' % (cputime.time()-clockStart)
-  return (elect,thermal,facadeData)
+  return (directionData,facadeData)
 
 """
 This is a load balancing step, because dividing up the days by the number of processors
@@ -249,16 +287,24 @@ def loadBalance(days,startDay,numProc,DNI):
   pairs.append((procStartDay,startDay+days))
   return pairs
 
+"""
+This is the base program, after main is called, that organizes all the parallel data
+collects information, makes a few plots, and sets up parameters for each run,
+and saves all the files
+
+This also does the parallelization, load balancing, time zones, etc
+
+"""
 def run(init,solverInputs):
   ############################################### data loading 
   (DNI,exteriorAirTemp,DHI,timezone,lat,lon,city) = weather.readTMY(init['TMY'])
   solar.setTimezone(timezone)
   solar.setLocation(lat,lon)
+
+  # set up geometry
   geometry = casegeom.readFile(init['geomfile'],"ICSolar",
     init['useSunlitFraction'])
   geometry.computeBlockCounts(icsolar.moduleHeight,icsolar.moduleWidth)
-
-
 
   geometry.initializeData(solverInputs['moduleDataNames'])
   casegeom.tiltGeometry(geometry,init['tilt'],init['useSunlitFraction'])
@@ -276,11 +322,17 @@ def run(init,solverInputs):
   if not os.path.exists('Results/'+init['directory']):
     os.makedirs('Results/'+init['directory'])
 
-  # this bins things by facade direction
+  if ( init['writeVTKFiles'] ):
+    if not os.path.exists('Results/'+init['directory']+'/VTK'):
+      os.makedirs('Results/'+init['directory']+'/VTK')    
+
+  # this bins things by facade direction, 
+  # it is directionData['variablename']['direction'][data]
+  # and for facadeData['variablename'][index][data]
   bins = list(set([g.dir for g in geometry]));
   bins.append('total')
-  thermal = dict([(bb,np.zeros(timesteps)) for bb in bins])
-  elect = dict([(bb,np.zeros(timesteps)) for bb in bins])
+  directionData = {name:{b:np.zeros(timesteps) for b in bins} \
+    for name in solverInputs['directionDataNames']}
 
   # this collects things by facade number
   facadeData = {name:[] for name in solverInputs['facadeDataNames']}
@@ -323,21 +375,22 @@ def run(init,solverInputs):
     (start,end) = procSplit[i]
     resultRange = slice((start-init['startDay'])*stepsPerDay,(end-init['startDay'])*stepsPerDay)
     for b in bins:
-      elect[b][resultRange] = results[i][0][b]
-      thermal[b][resultRange] = results[i][1][b]
+      for name in solverInputs['directionDataNames']:
+        directionData[name][b][resultRange] = results[i][0][name][b]
     for j in range(len(geometry)):
       for name in solverInputs['facadeDataNames']:
-        facadeData[name][j][resultRange] = results[i][2][name][j]
+        facadeData[name][j][resultRange] = results[i][1][name][j]
 
   ############################################### write Data Files if requested
+
   if init['writeDataFiles']:
     outputfiles = {}
     outputFacadeFiles = {}
 
     # put headers into files
     for b in bins:
-      outputfiles[b] = (open('Results/'+init['directory']+'/output_'+b[0]+'.txt','w'))
-      outputfiles[b].write('# time,thermal,electrical\n')
+      outputfiles[b] = (open('Results/'+init['directory']+'/output_'+b+'.txt','w'))
+      outputfiles[b].write('# time,'+','.join(solverInputs['directionDataNames'])+'\n')
 
     for j in range(len(geometry)):
       outputFacadeFiles[j] = (open('Results/'+init['directory']+'/output_'+str(j)+'.txt','w'))
@@ -346,8 +399,8 @@ def run(init,solverInputs):
     # write the data
     for ts in range(startStep,endStep):
       for b in bins:
-        outputfiles[b].write(','.join([str(ts*solverInputs['dt']),'%.12e' % thermal[b][ts-startStep], \
-          '%.12e' % elect[b][ts-startStep]])+'\n')
+        outputfiles[b].write(str(ts*solverInputs['dt'])+','+','.join(['%.3e' % directionData[name][b][ts-startStep] \
+          for name in solverInputs['directionDataNames']])+'\n')
       for j in range(len(geometry)):
         outputFacadeFiles[j].write(str(ts*solverInputs['dt'])+','+','.join(['%.3e' % facadeData[name][j][ts-startStep] \
           for name in solverInputs['facadeDataNames']])+'\n')
@@ -359,49 +412,52 @@ def run(init,solverInputs):
       outputFacadeFiles[j].close()
 
   # generate some plots in the Results/ directory
-  linestyles = {'south':'--sk', 'roof':'--k', 'east':'--xk', 'west':'--ok', 'total':'-k'}
+  # check the data is available
+  if ('thermal' in directionData and 'elect' in directionData):
 
-  plt.subplot(1,3,1)
-  for b in bins:
-    plt.plot(np.arange(startStep,endStep)/stepsPerDay,np.cumsum(thermal[b])/area[b],linestyles[b],
-      linewidth=2.0,label=b,markevery=30*stepsPerDay,markersize=7,fillstyle='none',markeredgewidth=2)
+    linestyles = {'south':'--sk', 'roof':'--k', 'east':'--xk', 'west':'--ok', 'total':'-k'}
 
-  axes = plt.gca()
-  axes.tick_params(axis='both', which='major', labelsize=18)
+    plt.subplot(1,3,1)
+    for b in bins:
+      plt.plot(np.arange(startStep,endStep)/stepsPerDay,np.cumsum(directionData['thermal'][b])/area[b],linestyles[b],
+        linewidth=2.0,label=b,markevery=30*stepsPerDay,markersize=7,fillstyle='none',markeredgewidth=2)
 
-  plt.legend(loc='upper left',fontsize=18)
-  plt.ylabel('Thermal Output ($kWh/m^2$)',fontsize=18), plt.xlabel('Time (Days)',fontsize=18)
-  plt.xlim(init['startDay'],init['startDay']+init['days'])
+    axes = plt.gca()
+    axes.tick_params(axis='both', which='major', labelsize=18)
 
-  plt.subplot(1,3,2)
-  for b in bins:
-    plt.plot(np.arange(startStep,endStep)/stepsPerDay,np.cumsum(elect[b])/area[b],linestyles[b],
-      linewidth=2.0,label=b,markevery=30*stepsPerDay,markersize=7,fillstyle='none',markeredgewidth=2)
+    plt.legend(loc='upper left',fontsize=18)
+    plt.ylabel('Thermal Output ($kWh/m^2$)',fontsize=18), plt.xlabel('Time (Days)',fontsize=18)
+    plt.xlim(init['startDay'],init['startDay']+init['days'])
 
-  plt.legend(loc='upper left',fontsize=18)
-  plt.ylabel('Electrical Output ($kWh/m^2$)',fontsize=18), plt.xlabel('Time (Days)',fontsize=18)
-  plt.xlim(init['startDay'],init['startDay']+init['days'])
-  axes = plt.gca()
-  axes.tick_params(axis='both', which='major', labelsize=18)
+    plt.subplot(1,3,2)
+    for b in bins:
+      plt.plot(np.arange(startStep,endStep)/stepsPerDay,np.cumsum(directionData['elect'][b])/area[b],linestyles[b],
+        linewidth=2.0,label=b,markevery=30*stepsPerDay,markersize=7,fillstyle='none',markeredgewidth=2)
 
-  plt.subplot(1,3,3)
-  plt.plot(np.arange(startStep,endStep)/stepsPerDay,
-    np.cumsum(elect['total']+thermal['total'])/area['total'],
-    linewidth=2.0,label='total',linestyle='-',color='0.01')
-  plt.plot(np.arange(startStep,endStep)/stepsPerDay,np.cumsum(thermal['total'])/area['total'],
-    linewidth=2.0,label='thermal',linestyle='--',color='0.20')
-  plt.plot(np.arange(startStep,endStep)/stepsPerDay,np.cumsum(elect['total'])/area['total'],
-    linewidth=2.0,label='electrical',linestyle='-.',color='0.4')
-  plt.ylabel('Total Output ($kWh/m^2$)',fontsize=18), plt.xlabel('Time (Days)',fontsize=18)
-  plt.xlim(init['startDay'],init['startDay']+init['days'])
-  axes = plt.gca()
-  plt.legend(loc='upper left',fontsize=18)
-  axes.tick_params(axis='both', which='major', labelsize=18)
+    plt.legend(loc='upper left',fontsize=18)
+    plt.ylabel('Electrical Output ($kWh/m^2$)',fontsize=18), plt.xlabel('Time (Days)',fontsize=18)
+    plt.xlim(init['startDay'],init['startDay']+init['days'])
+    axes = plt.gca()
+    axes.tick_params(axis='both', which='major', labelsize=18)
 
-  plt.gcf().set_size_inches(15,5)
-  plt.tight_layout()
-  plt.savefig('Results/'+init['directory']+'_outputsSum.png')
-  plt.close()
+    plt.subplot(1,3,3)
+    plt.plot(np.arange(startStep,endStep)/stepsPerDay,
+      np.cumsum(directionData['thermal']['total']+directionData['elect']['total'])/area['total'],
+      linewidth=2.0,label='total',linestyle='-',color='0.01')
+    plt.plot(np.arange(startStep,endStep)/stepsPerDay,np.cumsum(directionData['thermal']['total'])/area['total'],
+      linewidth=2.0,label='thermal',linestyle='--',color='0.20')
+    plt.plot(np.arange(startStep,endStep)/stepsPerDay,np.cumsum(directionData['elect']['total'])/area['total'],
+      linewidth=2.0,label='electrical',linestyle='-.',color='0.4')
+    plt.ylabel('Total Output ($kWh/m^2$)',fontsize=18), plt.xlabel('Time (Days)',fontsize=18)
+    plt.xlim(init['startDay'],init['startDay']+init['days'])
+    axes = plt.gca()
+    plt.legend(loc='upper left',fontsize=18)
+    axes.tick_params(axis='both', which='major', labelsize=18)
+
+    plt.gcf().set_size_inches(15,5)
+    plt.tight_layout()
+    plt.savefig('Results/'+init['directory']+'_outputs.png')
+    plt.close()
 
 if __name__ == "__main__":
   test.runTests()
@@ -440,10 +496,12 @@ if __name__ == "__main__":
   # data for each facade (one number for each facade)
   'facadeDataNames':['epc','glaze','aoi','yaw','pitch',
                'shade','dni','thermal','elect'],
-      # data on modules (a number for each module)
+  # data on modules (a number for each module)
   'moduleDataNames':['DNI','DNIatModule','DHI','DHIatModule', 'Glazing', \
                      'waterModuleT','waterTubeT','inletAirTemp','externalAirT',
                     'receiverT','thermal','electrical'],
+  # data per direction
+  'directionDataNames':['thermal','elect'],
   }
 
   run(init,solverInputs)
