@@ -41,10 +41,6 @@ def run(name,nicename):
   receiverTemp = [np.zeros(n),np.zeros(n),np.zeros(n),
                   np.zeros(n),np.zeros(n),np.zeros(n)]
 
-  ############################################### pre-computed information
-  # this is a lookup table to connect each module to a shading table
-  shadingIndices = [0,1,2,3,4,5]
-
   ############################################### input parameters 
   interiorAirTemp = 20.0 # Celcius
 
@@ -52,9 +48,14 @@ def run(name,nicename):
   airFlowRate = 2.0*0.16*1.200
 
   # timestep is ten seconds
-  init = {'dt':10.,'length':icsolar.moduleHeight,'interiorAirTemp':interiorAirTemp, 
-    'inletAirTemp':interiorAirTemp,'airFlowRate':airFlowRate,
-    'numModules':6}
+  init = {
+  'dt':10., # seconds
+  'length':icsolar.moduleHeight,
+  'interiorAirTemp':interiorAirTemp, 
+  'inletAirTemp':interiorAirTemp,
+  'airFlowRate':airFlowRate,
+  'numModules':6
+  }
 
   ############################################### set up results 
   if not os.path.exists('ValidationResults'):
@@ -72,7 +73,7 @@ def run(name,nicename):
     shade = np.ones(6)
 
     for i in range(6):
-      shade[i] = shading.getStudioUnshadedFractionAtTime(time,geometry,shadingIndices[i])
+      shade[i] = shading.getStudioUnshadedFractionAtTime(time,geometry,i)
 
     # Uncomment this to use exact energy in as the input, for debugging
     # init['Q_w'] = [data['heatgen_m'+str(7-i)][ts] for i in range(1,7)]
