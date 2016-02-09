@@ -172,16 +172,8 @@ def solve(problemInputs,solverInputs):
         # all data
 
         if(not daytime):
-          g.data['DNI'] = np.zeros(g.nY)
-          g.data['DHI'] = np.zeros(g.nY)
-          g.data['DNIatModule'] = np.zeros(g.nY)
-          g.data['DHIatModule'] = np.zeros(g.nY)
-          g.data['receiverT'] = np.zeros(g.nY)
-          g.data['inletAirTemp'] = np.ones(g.nY)*solverInputs['inletAirTemp']
-          g.data['waterModuleT'] = np.ones(g.nY)*solverInputs['inletWaterTemp']
-          g.data['waterTubeT'] = np.ones(g.nY)*solverInputs['inletWaterTemp']
-          g.data['thermal'] = np.zeros(g.nY)
-          g.data['electrical'] = np.zeros(g.nY)
+          for name in g.data:
+            g.data[name] = np.zeros(g.nY)
           continue
 
         shadedVector = shading.applySunlitFraction(sunlit,g,averaged)
@@ -492,5 +484,8 @@ if __name__ == "__main__":
   'waterFlowRate':1.6*1000.*1e-6, # 1.6 mL/s in kg/s
   # 2.0 m/s * 0.16, cross sectional area, times density in kg/s
   'airFlowRate':2.0*0.16*1.200,
+  'dataNames':['epc','glaze','AOI','yaw','pitch',
+    'shade','thermal','dni','thermal','elect'],
   }
+
   run(init,solverInputs)
