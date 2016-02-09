@@ -21,12 +21,18 @@ All results will end up in Results/<directory name>
 
 """
 
-def solve(inputs,startDay,endDay,DNI,extAirT,DHI):
+def solve(inputs):
 
   ############################################### input parameters
   geometry = inputs['geometry']
   useSunlitFraction = inputs['useSunlitFraction']
   directory = inputs['directory']
+  startDay = inputs['range'][0]
+  endDay = inputs['range'][1]
+  DNI = inputs['DNI']
+  extAirT = inputs['extAirT']
+  DHI = inputs['DHI']
+  
   days = endDay - startDay
   stepsPerDay = 24
   timesteps = days*stepsPerDay
@@ -337,17 +343,22 @@ def run(init):
   This is the tricky pair, the processor splits are in procSplit, and each portion of the weather data
   thats needed is passed into the solver itself, so theres a lot of offsetting to be done,
   """
+  inputs = []
+  for (start,end) in procSplit:
+    stepRange = slice(start*stepsPerDay,end*stepsPerDay)
+    inputDict = {
+    'range':(start,end),
+    'directory':init['directory'],
+    'geometry':geometry,
+    'useSunlitFraction':init['useSunlitFraction'],
+    'writeVTKFiles':init['writeVTKFiles'],
+    'DNI':DNI[stepRange],
+    'extAirT':extAirT[stepRange],
+    'DHI':DHI[stepRange],
+    }
+    inputs.append(inputDict)
 
-  inputs = {
-  'directory':init['directory'],
-  'geometry':geometry,
-  'useSunlitFraction':init['useSunlitFraction'],
-  'writeVTKFiles':init['writeVTKFiles'],
-  }
-
-  results = Parallel(n_jobs = init['numProcs'])(delayed(solve)(inputs,start,end,
-    DNI[slice(start*stepsPerDay,end*stepsPerDay)],extAirT[slice(start*stepsPerDay,end*stepsPerDay)],
-    DHI[slice(start*stepsPerDay,end*stepsPerDay)]) for (start,end) in procSplit)
+  results = Parallel(n_jobs = init['numProcs'])(delayed(solve)(inputs[i]) for i in range(init['numProcs']))
   print city,'final runtime is','%.2f' % (cputime.time()-clockStart)
 
   ############################################### collapse results
@@ -458,7 +469,7 @@ if __name__ == "__main__":
   'startDay':0,
   'days':365,
   'directory':'NYC'+str(tilt),
-  'TMY':'data/TMY/725033TYA.csv',
+  'TMY':'data/TMY/NYC.csv',
   'geomfile':'data/geometry/whole-building.txt',
   'useSunlitFraction':True,
   'writeDataFiles':True,
