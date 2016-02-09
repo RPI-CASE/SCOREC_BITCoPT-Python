@@ -11,6 +11,16 @@ import time as cputime
 import matplotlib.pyplot as plt
 import os
 from joblib import Parallel, delayed
+"""
+This file contains an example run for ICSolar with geometry
+It relies on the icsolar problem setup in src.icsolar,
+as well as support functions in other files.
+
+All results will end up in Results/<directory name>
+
+"""
+
+
 
 """
 This is used to disable the warnings which occur when 
@@ -29,17 +39,9 @@ is fairly common, and as such is filtered out
 import warnings
 warnings.filterwarnings("ignore", message = 'The iteration is not making good progress')
 
-"""
-This file contains an example run for ICSolar with geometry
-It relies on the icsolar problem setup in src.icsolar,
-as well as support functions in other files.
-
-All results will end up in Results/<directory name>
-
-"""
 def solve(inputs):
 
-  ############################################### input parameters
+  ############################################### take data from inputs
   geometry = inputs['geometry']
   useSunlitFraction = inputs['useSunlitFraction']
   directory = inputs['directory']
@@ -48,30 +50,25 @@ def solve(inputs):
   DNI = inputs['DNI']
   exteriorAirTemp = inputs['exteriorAirTemp']
   DHI = inputs['DHI']
-  
+  stepsPerDay = inputs['stepsPerDay']
+
+
   days = endDay - startDay
-  stepsPerDay = 24
   timesteps = days*stepsPerDay
   startStep = startDay*stepsPerDay
   endStep = (days+startDay)*stepsPerDay
-  eta = 0.33 # electrical efficiency, constant for now.
-
-  inletWaterTemp = 20.0 # inlet water temperature, 
-  inletAirTemp = 20.0 # inlet air temperature
-  interiorAirTemp = 20.0 # interior air temperature
-  # 1.6 mL/s 
-  waterFlowRate = 1.6*1000.*1e-6 # kg/s
-  # 2.0 m/s * 0.16, cross sectional area, times density
-  airFlowRate = 2.0*0.16*1.200 # kg/s
 
   ICSolarInput = {
+  'stepsPerDay':stepsPerDay,
   'dt':stepsPerDay/24.*3600.,
+  'eta':0.33, # electrical efficiency, constant for now.
   'length':icsolar.moduleHeight,
-  'waterFlowRate':waterFlowRate,
-  'airFlowRate':airFlowRate,
-  'inletWaterTemp':inletWaterTemp,
-  'inletAirTemp':inletAirTemp,
-  'interiorAirTemp':interiorAirTemp
+  'inletWaterTemp':20.0,
+  'inletAirTemp':20.0,
+  'interiorAirTemp':20.0,
+  'waterFlowRate':1.6*1000.*1e-6, # 1.6 mL/s in kg/s
+  # 2.0 m/s * 0.16, cross sectional area, times density in kg/s
+  'airFlowRate':2.0*0.16*1.200,
   }
 
   ############################################### set up results 
@@ -195,9 +192,9 @@ def solve(inputs):
           g.data['DNIatModule'] = np.zeros(g.nY)
           g.data['DHIatModule'] = np.zeros(g.nY)
           g.data['receiverT'] = np.zeros(g.nY)
-          g.data['inletAirTemp'] = np.ones(g.nY)*inletAirTemp
-          g.data['waterModuleT'] = np.ones(g.nY)*inletWaterTemp
-          g.data['waterTubeT'] = np.ones(g.nY)*inletWaterTemp
+          g.data['inletAirTemp'] = np.ones(g.nY)*ICSolarInput['inletAirTemp']
+          g.data['waterModuleT'] = np.ones(g.nY)*ICSolarInput['inletWaterTemp']
+          g.data['waterTubeT'] = np.ones(g.nY)*ICSolarInput['inletWaterTemp']
           g.data['thermal'] = np.zeros(g.nY)
           g.data['electrical'] = np.zeros(g.nY)
           continue
@@ -213,7 +210,7 @@ def solve(inputs):
         g.data['DHIatModule'] = g.data['DHI']*glaze*shade*0.5*(1.+np.sin(g.tilt))
 
         # ICSolarInput['Q_w'] = 0.024801*(0.66)*1e-3*g.data['DNIatModule']
-        ICSolarInput['Q_d'] = 0.866*625.5*0.0001*g.data['DNIatModule']*(1.-eta)
+        ICSolarInput['Q_d'] = 0.866*625.5*0.0001*g.data['DNIatModule']*(1.-ICSolarInput['eta'])
         ICSolarInput['Q_a'] = np.zeros(g.nY)
         # (Q_c,Q_I) = support.getRadiativeGain(sunPosition,g,g.data['DNIatModule'],g.data['DHIatModule'])
         # ICSolarInput['Q_c'] = g.data['DHIatModule']*icsolar.moduleHeight*icsolar.moduleWidth
@@ -237,12 +234,12 @@ def solve(inputs):
         g.data['receiverT'] = results['receiver']
 
         # compute the electrical and thermal energy
-        electData = np.sum(eta \
+        electData = np.sum(ICSolarInput['eta'] \
           *1e-3*0.866*625.5*0.0001*g.data['DNIatModule'])*g.nX
 
         elect[g.dir][ts-startStep] += electData*(1+len(matches))
         electFacade[geometry.index(g)][ts-startStep] = electData
-        # g.data['electrical'] = eta*1e-3*0.866*625.5*0.0001*g.data['DNIatModule']
+        # g.data['electrical'] = ICSolarInput['eta']*1e-3*0.866*625.5*0.0001*g.data['DNIatModule']
 
         thermalData = np.sum(ICSolarInput['waterFlowRate']*4.218 \
           *(g.data['waterModuleT']-g.data['waterTubeT']))*g.nX
@@ -378,6 +375,7 @@ def run(init):
     'DNI':DNI[stepRange],
     'exteriorAirTemp':exteriorAirTemp[stepRange],
     'DHI':DHI[stepRange],
+    'stepsPerDay':24,
     }
     inputs.append(inputDict)
 
@@ -403,6 +401,7 @@ def run(init):
       pitchFacade[j][resultRange] = results[i][9][j]
       dniFacade[j][resultRange] = results[i][10][j]
 
+  ############################################### write Data Files if requested
   if init['writeDataFiles']:
     outputfiles = {}
     for b in bins:
@@ -426,15 +425,15 @@ def run(init):
           '%.3e' % shadeFacade[b][ts-startStep], '%.3e' % yawFacade[b][ts-startStep],
           '%.3e' % pitchFacade[b][ts-startStep],'%.3e' % dniFacade[b][ts-startStep]])+'\n')
 
+
     for b in bins:
       outputfiles[b].close()
     for b in facadeBins:
       outputFacadeFiles[b].close()
-    ############################################### plot outputs
 
-  linestyles = {'south':'--sk', 'roof':'--k', 'east':'--xk', 'west':'--ok', 'total':'-k'}
 
   ################# Cumulative Sum per Facade Area
+  linestyles = {'south':'--sk', 'roof':'--k', 'east':'--xk', 'west':'--ok', 'total':'-k'}
 
   plt.subplot(1,3,1)
   for b in bins:
@@ -487,10 +486,10 @@ if __name__ == "__main__":
   tilt = 0
 
   init = { 
-  'numProcs':8,
+  'numProcs':2,
   'tilt':tilt,
   'startDay':0,
-  'days':365,
+  'days':4,
   'directory':'NYC'+str(tilt),
   'TMY':'data/TMY/NYC.csv',
   'geomfile':'data/geometry/whole-building.txt',
