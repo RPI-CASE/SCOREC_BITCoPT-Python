@@ -90,6 +90,7 @@ class SimpleGeometry(object):
   def __repr__(self):
     return 'SimpleGeometry Object with orient '+str(self.orient) \
       +' and tilt '+str(self.tilt)
+
 class Geometry(object):
   """ 
   Geometry Class
@@ -310,6 +311,21 @@ class GeometrySet(object):
       g.nY = int(g.height()/blockHeight)
 
   """
+  getAreas:   gets Areas, computes them if they haven't already been
+
+  input(s):   none
+  output(s):  dictionary of areas
+  """
+  def getAreas(self):
+    bins = list(set([g.dir for g in self.g]));
+    area = {b:0. for b in bins}
+    for g in self.g:
+      area[g.dir] += area[g.dir] + g.height()*g.width()
+
+    area['total'] = np.sum([area[b] for b in bins])
+    return area
+
+  """
   collectDataNames:   sets the list of strings corresponding
                       to all the data stored in the geometry
                       really should only be used for output
@@ -325,6 +341,7 @@ class GeometrySet(object):
         for k in g.data.keys():
           dataNames.add(k)
       self.dataNames = list(dataNames)
+
   """
   initializeData:   initialize data arrays as arrays of length nY
 
@@ -335,6 +352,18 @@ class GeometrySet(object):
     for g in self.g:
       for name in names:
         g.data[name] = np.zeros(g.nY)
+
+  """
+  setDataFromMatches:  sets data arrays in matching geometries
+
+  input(s):            geometry to set matches from
+  output(s):           none
+  """
+  def setDataFromMatches(self,g):
+    for match in self.getMatches(g):
+      for name in g.data:
+        match.data[name] = g.data[name]
+
 
   """
   computeSubsets:   computes the subset of surfaces that
