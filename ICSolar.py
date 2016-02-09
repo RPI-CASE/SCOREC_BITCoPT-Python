@@ -39,18 +39,18 @@ is fairly common, and as such is filtered out
 import warnings
 warnings.filterwarnings("ignore", message = 'The iteration is not making good progress')
 
-def solve(inputs):
+def solve(problemInputs,solverInputs):
 
-  ############################################### take data from inputs
-  geometry = inputs['geometry']
-  useSunlitFraction = inputs['useSunlitFraction']
-  directory = inputs['directory']
-  startDay = inputs['range'][0]
-  endDay = inputs['range'][1]
-  DNI = inputs['DNI']
-  exteriorAirTemp = inputs['exteriorAirTemp']
-  DHI = inputs['DHI']
-  stepsPerDay = inputs['stepsPerDay']
+  ############################################### take data from problemInputs
+  geometry = problemInputs['geometry']
+  useSunlitFraction = problemInputs['useSunlitFraction']
+  directory = problemInputs['directory']
+  startDay = problemInputs['range'][0]
+  endDay = problemInputs['range'][1]
+  DNI = problemInputs['DNI']
+  exteriorAirTemp = problemInputs['exteriorAirTemp']
+  DHI = problemInputs['DHI']
+  stepsPerDay = problemInputs['stepsPerDay']
 
 
   days = endDay - startDay
@@ -58,22 +58,8 @@ def solve(inputs):
   startStep = startDay*stepsPerDay
   endStep = (days+startDay)*stepsPerDay
 
-  ICSolarInput = {
-  'stepsPerDay':stepsPerDay,
-  'dt':stepsPerDay/24.*3600.,
-  'eta':0.33, # electrical efficiency, constant for now.
-  'length':icsolar.moduleHeight,
-  'inletWaterTemp':20.0,
-  'inletAirTemp':20.0,
-  'interiorAirTemp':20.0,
-  'waterFlowRate':1.6*1000.*1e-6, # 1.6 mL/s in kg/s
-  # 2.0 m/s * 0.16, cross sectional area, times density in kg/s
-  'airFlowRate':2.0*0.16*1.200,
-  }
-
   ############################################### set up results 
-  if not os.path.exists('Results/'+directory):
-    os.makedirs('Results/'+directory)
+
 
   # this bins things by facade direction
   bins = set([g.dir for g in geometry]);
@@ -105,9 +91,7 @@ def solve(inputs):
     electFacade.append(np.zeros(timesteps))
     dniFacade.append(np.zeros(timesteps))
 
-  area = {bb:np.sum([g.height()*g.width()
-   for g in geometry if g.dir == bb]) for bb in bins}
-  area['total'] = np.sum([area[bb] for bb in bins])
+  area = geometry.getAreas()
   ############################################### pre-computed information
   # this is a lookup table to connect each module to a shading table
   
@@ -133,9 +117,9 @@ def solve(inputs):
     if(1 < ts and ts < endStep-1):
       daytime = (DNI[ts-startStep-1]+DNI[ts-startStep]+DNI[ts-startStep+1] > 0)
 
-    # once the first daytime hits, we are done ICSolarInputializing
-    time = ICSolarInput['dt']*ts
-    ICSolarInput['exteriorAirTemp'] = exteriorAirTemp[ts-startStep]
+    # once the first daytime hits, we are done initializing
+    time = solverInputs['dt']*ts
+    solverInputs['exteriorAirTemp'] = exteriorAirTemp[ts-startStep]
 
     # solarVector
     sunPosition = solar.getSunPosition(time)
@@ -147,12 +131,11 @@ def solve(inputs):
       # this index, it is the first one that needs to be solved
       # otherwise, don't waste time solving this
       if not matches or geometry.index(matches[0]) > index:
-        g.data['airTExternal'] = np.ones(g.nY)*exteriorAirTemp[ts-startStep]
         if(DNI[ts-startStep] == 0 and DHI[ts-startStep] == 0):
           sunlit = 0.
           averaged = True
         elif useSunlitFraction is True:
-          (sunlit,averaged) = shading.getMeanSunlitFraction(geometry,g,time,ICSolarInput['dt'],5)
+          (sunlit,averaged) = shading.getMeanSunlitFraction(geometry,g,time,solverInputs['dt'],5)
         else:
           sunlit = 1.0
           averaged = True
@@ -183,6 +166,8 @@ def solve(inputs):
           shadeFacade[geometry.index(match)][ts-startStep] = shadeFacade[geometry.index(g)][ts-startStep]
           dniFacade[geometry.index(match)][ts-startStep] = dniFacade[geometry.index(g)][ts-startStep]
 
+        g.data['externalAirT'] = np.ones(g.nY)*exteriorAirTemp[ts-startStep]
+
         # don't solve this facade if the sun can't see it, but zero 
         # all data
 
@@ -192,9 +177,9 @@ def solve(inputs):
           g.data['DNIatModule'] = np.zeros(g.nY)
           g.data['DHIatModule'] = np.zeros(g.nY)
           g.data['receiverT'] = np.zeros(g.nY)
-          g.data['inletAirTemp'] = np.ones(g.nY)*ICSolarInput['inletAirTemp']
-          g.data['waterModuleT'] = np.ones(g.nY)*ICSolarInput['inletWaterTemp']
-          g.data['waterTubeT'] = np.ones(g.nY)*ICSolarInput['inletWaterTemp']
+          g.data['inletAirTemp'] = np.ones(g.nY)*solverInputs['inletAirTemp']
+          g.data['waterModuleT'] = np.ones(g.nY)*solverInputs['inletWaterTemp']
+          g.data['waterTubeT'] = np.ones(g.nY)*solverInputs['inletWaterTemp']
           g.data['thermal'] = np.zeros(g.nY)
           g.data['electrical'] = np.zeros(g.nY)
           continue
@@ -209,23 +194,23 @@ def solve(inputs):
         # I think this simplifies your math, cos(pi/2-tilt) = sin(tilt)
         g.data['DHIatModule'] = g.data['DHI']*glaze*shade*0.5*(1.+np.sin(g.tilt))
 
-        # ICSolarInput['Q_w'] = 0.024801*(0.66)*1e-3*g.data['DNIatModule']
-        ICSolarInput['Q_d'] = 0.866*625.5*0.0001*g.data['DNIatModule']*(1.-ICSolarInput['eta'])
-        ICSolarInput['Q_a'] = np.zeros(g.nY)
+        # solverInputs['Q_w'] = 0.024801*(0.66)*1e-3*g.data['DNIatModule']
+        solverInputs['Q_d'] = 0.866*625.5*0.0001*g.data['DNIatModule']*(1.-solverInputs['eta'])
+        solverInputs['Q_a'] = np.zeros(g.nY)
         # (Q_c,Q_I) = support.getRadiativeGain(sunPosition,g,g.data['DNIatModule'],g.data['DHIatModule'])
-        # ICSolarInput['Q_c'] = g.data['DHIatModule']*icsolar.moduleHeight*icsolar.moduleWidth
-        ICSolarInput['numModules'] = g.nY
+        # solverInputs['Q_c'] = g.data['DHIatModule']*icsolar.moduleHeight*icsolar.moduleWidth
+        solverInputs['numModules'] = g.nY
         
         # set up previous temperature
         if (not previousDayTime):
-          ICSolarInput['previousWaterModuleT'] = ICSolarInput['inletWaterTemp']*np.ones(g.nY)
-          ICSolarInput['previousWaterTubeT'] = ICSolarInput['inletWaterTemp']*np.ones(g.nY)
+          solverInputs['previousWaterModuleT'] = solverInputs['inletWaterTemp']*np.ones(g.nY)
+          solverInputs['previousWaterTubeT'] = solverInputs['inletWaterTemp']*np.ones(g.nY)
         else:
-          ICSolarInput['previousWaterModuleT'] = g.data['waterModuleT']
-          ICSolarInput['previousWaterTubeT'] = g.data['waterTubeT']
+          solverInputs['previousWaterModuleT'] = g.data['waterModuleT']
+          solverInputs['previousWaterTubeT'] = g.data['waterTubeT']
 
         # solve the problem
-        results = icsolar.solve(ICSolarInput)
+        results = icsolar.solve(solverInputs)
 
         # process results for storage 
         g.data['waterModuleT'] = results['waterModule']
@@ -234,16 +219,16 @@ def solve(inputs):
         g.data['receiverT'] = results['receiver']
 
         # compute the electrical and thermal energy
-        electData = np.sum(ICSolarInput['eta'] \
+        electData = np.sum(solverInputs['eta'] \
           *1e-3*0.866*625.5*0.0001*g.data['DNIatModule'])*g.nX
 
         elect[g.dir][ts-startStep] += electData*(1+len(matches))
         electFacade[geometry.index(g)][ts-startStep] = electData
-        # g.data['electrical'] = ICSolarInput['eta']*1e-3*0.866*625.5*0.0001*g.data['DNIatModule']
+        # g.data['electrical'] = solverInputs['eta']*1e-3*0.866*625.5*0.0001*g.data['DNIatModule']
 
-        thermalData = np.sum(ICSolarInput['waterFlowRate']*4.218 \
+        thermalData = np.sum(solverInputs['waterFlowRate']*4.218 \
           *(g.data['waterModuleT']-g.data['waterTubeT']))*g.nX
-        g.data['thermal'] = ICSolarInput['waterFlowRate']*4.218 \
+        g.data['thermal'] = solverInputs['waterFlowRate']*4.218 \
           *(g.data['waterModuleT']-g.data['waterTubeT'])
 
         epcFacade[geometry.index(g)][ts-startStep] = 0.866*625.5*0.0001*g.data['DNIatModule'][int(g.nY/2)]
@@ -262,7 +247,7 @@ def solve(inputs):
     elect['total'][ts-startStep] = sum([elect[b][ts-startStep] for b in bins])
     # post processing and cleanup
     
-    if(daytime and inputs['writeVTKFiles']):
+    if(daytime and problemInputs['writeVTKFiles']):
       casegeom.writeVTKfile(geometry,'Results/'+directory+'/geom'+'0'*(4-len(str(ts)))+str(ts)+'.vtk','')
  
   print "runtime for days",startDay,"to",startDay+days-1,":",'%.2f' % (cputime.time()-clockStart)
@@ -296,7 +281,7 @@ def loadBalance(days,startDay,numProc,DNI):
   pairs.append((procStartDay,startDay+days))
   return pairs
 
-def run(init):
+def run(init,solverInputs):
   ############################################### data loading 
   (DNI,exteriorAirTemp,DHI,timezone,lat,lon,city) = weather.readTMY(init['TMY'])
   solar.setTimezone(timezone)
@@ -306,7 +291,7 @@ def run(init):
   geometry.computeBlockCounts(icsolar.moduleHeight,icsolar.moduleWidth)
 
   dataNames = ['DNI','DNIatModule','DHI','DHIatModule', 'Glazing', \
-               'waterModuleT','waterTubeT','inletAirTemp','airTExternal',
+               'waterModuleT','waterTubeT','inletAirTemp','externalAirT',
                'receiverT','thermal','electrical']
 
   geometry.initializeData(dataNames)
@@ -321,8 +306,8 @@ def run(init):
   clockStart = cputime.time()
 
   ############################################### set up results
-  if not os.path.exists(init['directory']):
-    os.makedirs(init['directory'])
+  if not os.path.exists('Results/'+init['directory']):
+    os.makedirs('Results/'+init['directory'])
 
   # this bins things by facade direction
   bins = list(set([g.dir for g in geometry]));
@@ -353,9 +338,7 @@ def run(init):
     electFacade.append(np.zeros(timesteps))
     dniFacade.append(np.zeros(timesteps))
 
-  area = {bb:np.sum([g.height()*g.width()
-   for g in geometry if g.dir == bb]) for bb in bins}
-  area['total'] = np.sum([area[bb] for bb in bins])
+  area = geometry.getAreas()
 
   ############################################### run in parallel
 
@@ -363,7 +346,7 @@ def run(init):
   This is the tricky pair, the processor splits are in procSplit, and each portion of the weather data
   thats needed is passed into the solver itself, so theres a lot of offsetting to be done,
   """
-  inputs = []
+  problemInputs = []
   for (start,end) in procSplit:
     stepRange = slice(start*stepsPerDay,end*stepsPerDay)
     inputDict = {
@@ -377,9 +360,9 @@ def run(init):
     'DHI':DHI[stepRange],
     'stepsPerDay':24,
     }
-    inputs.append(inputDict)
+    problemInputs.append(inputDict)
 
-  results = Parallel(n_jobs = init['numProcs'])(delayed(solve)(inputs[i]) for i in range(init['numProcs']))
+  results = Parallel(n_jobs = init['numProcs'])(delayed(solve)(problemInputs[i],solverInputs) for i in range(init['numProcs']))
   print city,'final runtime is','%.2f' % (cputime.time()-clockStart)
 
   ############################################### collapse results
@@ -496,5 +479,18 @@ if __name__ == "__main__":
   'useSunlitFraction':True,
   'writeDataFiles':True,
   'writeVTKFiles':True,
+  'stepsPerDay':24,
   }
-  run(init)
+
+  solverInputs = {
+  'dt':init['stepsPerDay']/24.*3600.,
+  'eta':0.33, # electrical efficiency, constant for now.
+  'length':icsolar.moduleHeight,
+  'inletWaterTemp':20.0,
+  'inletAirTemp':20.0,
+  'interiorAirTemp':20.0,
+  'waterFlowRate':1.6*1000.*1e-6, # 1.6 mL/s in kg/s
+  # 2.0 m/s * 0.16, cross sectional area, times density in kg/s
+  'airFlowRate':2.0*0.16*1.200,
+  }
+  run(init,solverInputs)

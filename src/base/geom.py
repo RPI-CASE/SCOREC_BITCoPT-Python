@@ -354,18 +354,6 @@ class GeometrySet(object):
         g.data[name] = np.zeros(g.nY)
 
   """
-  setDataFromMatches:  sets data arrays in matching geometries
-
-  input(s):            geometry to set matches from
-  output(s):           none
-  """
-  def setDataFromMatches(self,g):
-    for match in self.getMatches(g):
-      for name in g.data:
-        match.data[name] = g.data[name]
-
-
-  """
   computeSubsets:   computes the subset of surfaces that
                     could shade another surface, based
                     on solar rays. See doc/shaded.tex
