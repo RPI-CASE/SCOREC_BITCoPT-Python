@@ -50,8 +50,8 @@ def solve(problemInputs,solverInputs):
   DNI = problemInputs['DNI']
   exteriorAirTemp = problemInputs['exteriorAirTemp']
   DHI = problemInputs['DHI']
-  stepsPerDay = problemInputs['stepsPerDay']
 
+  stepsPerDay = problemInputs['stepsPerDay']
 
   days = endDay - startDay
   timesteps = days*stepsPerDay
@@ -71,12 +71,11 @@ def solve(problemInputs,solverInputs):
 
   # this collects things by facade number
   facadeBins = range(len(geometry))
-  facadeData = {name:[] for name in solverInputs['dataNames']}
-  for name in solverInputs['dataNames']:
+  facadeData = {name:[] for name in solverInputs['facadeDataNames']}
+  for name in solverInputs['facadeDataNames']:
     for i in range(len(geometry)):
       facadeData[name].append(np.zeros(timesteps))
 
-  area = geometry.getAreas()
   ############################################### pre-computed information
   # this is a lookup table to connect each module to a shading table
   
@@ -261,7 +260,7 @@ def run(init,solverInputs):
 
 
 
-  geometry.initializeData(init['dataNames'])
+  geometry.initializeData(solverInputs['moduleDataNames'])
   casegeom.tiltGeometry(geometry,init['tilt'],init['useSunlitFraction'])
 
   stepsPerDay = 24
@@ -273,6 +272,7 @@ def run(init,solverInputs):
   clockStart = cputime.time()
 
   ############################################### set up results
+  # create the directories
   if not os.path.exists('Results/'+init['directory']):
     os.makedirs('Results/'+init['directory'])
 
@@ -283,8 +283,8 @@ def run(init,solverInputs):
   elect = dict([(bb,np.zeros(timesteps)) for bb in bins])
 
   # this collects things by facade number
-  facadeData = {name:[] for name in solverInputs['dataNames']}
-  for name in solverInputs['dataNames']:
+  facadeData = {name:[] for name in solverInputs['facadeDataNames']}
+  for name in solverInputs['facadeDataNames']:
     for i in range(len(geometry)):
       facadeData[name].append(np.zeros(timesteps))
 
@@ -295,6 +295,8 @@ def run(init,solverInputs):
   """
   This is the tricky pair, the processor splits are in procSplit, and each portion of the weather data
   thats needed is passed into the solver itself, so theres a lot of offsetting to be done,
+
+  This sets up the inputs to pass into the solver itself
   """
   problemInputs = []
   for (start,end) in procSplit:
@@ -324,38 +326,39 @@ def run(init,solverInputs):
       elect[b][resultRange] = results[i][0][b]
       thermal[b][resultRange] = results[i][1][b]
     for j in range(len(geometry)):
-      for name in solverInputs['dataNames']:
+      for name in solverInputs['facadeDataNames']:
         facadeData[name][j][resultRange] = results[i][2][name][j]
 
   ############################################### write Data Files if requested
   if init['writeDataFiles']:
     outputfiles = {}
+    outputFacadeFiles = {}
+
+    # put headers into files
     for b in bins:
       outputfiles[b] = (open('Results/'+init['directory']+'/output_'+b[0]+'.txt','w'))
-      outputfiles[b].write('#time,thermal,electrical\n')
+      outputfiles[b].write('# time,thermal,electrical\n')
 
-    outputFacadeFiles = {}
     for j in range(len(geometry)):
       outputFacadeFiles[j] = (open('Results/'+init['directory']+'/output_'+str(j)+'.txt','w'))
-      outputFacadeFiles[j].write('#time,'+','.join(solverInputs['dataNames'])+'\n')
+      outputFacadeFiles[j].write('# time,'+','.join(solverInputs['facadeDataNames'])+'\n')
 
+    # write the data
     for ts in range(startStep,endStep):
-
       for b in bins:
-        outputfiles[b].write(','.join([str(ts*init['stepsPerDay']),'%.12e' % thermal[b][ts-startStep], \
+        outputfiles[b].write(','.join([str(ts*solverInputs['dt']),'%.12e' % thermal[b][ts-startStep], \
           '%.12e' % elect[b][ts-startStep]])+'\n')
       for j in range(len(geometry)):
-        outputFacadeFiles[j].write(str(ts*init['stepsPerDay'])+','+','.join(['%.3e' % facadeData[name][j][ts-startStep] \
-          for name in solverInputs['dataNames']])+'\n')
+        outputFacadeFiles[j].write(str(ts*solverInputs['dt'])+','+','.join(['%.3e' % facadeData[name][j][ts-startStep] \
+          for name in solverInputs['facadeDataNames']])+'\n')
 
-
+    # close the files
     for b in bins:
       outputfiles[b].close()
     for j in range(len(geometry)):
       outputFacadeFiles[j].close()
 
-
-  ################# Cumulative Sum per Facade Area
+  # generate some plots in the Results/ directory
   linestyles = {'south':'--sk', 'roof':'--k', 'east':'--xk', 'west':'--ok', 'total':'-k'}
 
   plt.subplot(1,3,1)
@@ -408,11 +411,12 @@ if __name__ == "__main__":
 
   tilt = 0
 
+  # these are general variables
   init = { 
-  'numProcs':2,
+  'numProcs':8,
   'tilt':tilt,
-  'startDay':2,
-  'days':4,
+  'startDay':0,
+  'days':365,
   'directory':'NYC'+str(tilt),
   'TMY':'data/TMY/NYC.csv',
   'geomfile':'data/geometry/whole-building.txt',
@@ -420,12 +424,9 @@ if __name__ == "__main__":
   'writeDataFiles':True,
   'writeVTKFiles':True,
   'stepsPerDay':24,
-  # data on VTK files (a number for each module)
-  'dataNames':['DNI','DNIatModule','DHI','DHIatModule', 'Glazing', \
-               'waterModuleT','waterTubeT','inletAirTemp','externalAirT',
-               'receiverT','thermal','electrical']
   }
 
+  # these are run specific variables
   solverInputs = {
   'dt':init['stepsPerDay']/24.*3600.,
   'eta':0.33, # electrical efficiency, constant for now.
@@ -437,8 +438,12 @@ if __name__ == "__main__":
   # 2.0 m/s * 0.16, cross sectional area, times density in kg/s
   'airFlowRate':2.0*0.16*1.200,
   # data for each facade (one number for each facade)
-  'dataNames':['epc','glaze','aoi','yaw','pitch',
-    'shade','dni','thermal','elect'],
+  'facadeDataNames':['epc','glaze','aoi','yaw','pitch',
+               'shade','dni','thermal','elect'],
+      # data on modules (a number for each module)
+  'moduleDataNames':['DNI','DNIatModule','DHI','DHIatModule', 'Glazing', \
+                     'waterModuleT','waterTubeT','inletAirTemp','externalAirT',
+                    'receiverT','thermal','electrical'],
   }
 
   run(init,solverInputs)
