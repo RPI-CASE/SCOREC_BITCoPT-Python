@@ -43,17 +43,17 @@ solve:          Builds the problem
 
 input(s):       init, dictionary of physical parameters
                   numModules,   number of modules
-                  Q_a,          heat added to air
+                  Q_a,          heat added to air (optional)
                   Q_w or Q_d, heat added to water or device
                     one or the other needs to be present
                   airExterior,  outside air temperature
                   airInterior,  inside air temperature
-                  waterT,       inlet water temperature
-                  airT,         inlet air temperature
+                  inletWaterTemp,       inlet water temperature
+                  inletAirTemp,         inlet air temperature
                   waterFlowRate,  mass flow rate
                   airFlowRate,    mass flow rate
-                  previousWaterModuleT, water temperature in last step
-                  previousWaterTubeT, water temperature in last step
+                  previousWaterModuleT,  water temperature in last step
+                  previousWaterTubeT,    water temperature in last step
                   previousWaterFlowRate, water flow rate in last step
                   length,       length of tube between modules
                   dt,           timestep size
@@ -74,9 +74,9 @@ def solve(init):
 
   # Inlet blocks, the material is a dictionary of parameter functions,
   # and mass flow rate is just a material
-  waterInlet = b.Block('waterInlet',{'T':init['waterT']},constWater,\
+  waterInlet = b.Block('waterInlet',{'T':init['inletWaterTemp']},constWater,\
     {'mdot':init['waterFlowRate']})
-  airInlet = b.Block('airInlet',{'T':init['airT']},constAir,\
+  airInlet = b.Block('airInlet',{'T':init['inletAirTemp']},constAir,\
     {'mdot':init['airFlowRate']})
 
   # exterior and interior regions
@@ -91,13 +91,13 @@ def solve(init):
   # initialize all regions
   for i in range(init['numModules']):
     waterModule.append(b.Block('waterModule_'+str(i),
-      {'T':init['waterT']},constWater,{'mdot':init['waterFlowRate']}))
+      {'T':init['inletWaterTemp']},constWater,{'mdot':init['waterFlowRate']}))
     airModule.append(b.Block('airModule_'+str(i),
-      {'T':init['airT']},constAir,{'mdot':init['airFlowRate']}))   
+      {'T':init['inletAirTemp']},constAir,{'mdot':init['airFlowRate']}))   
     waterTube.append(b.Block('waterTube_'+str(i),
-      {'T':init['waterT']},constWater,{'mdot':init['waterFlowRate']}))
+      {'T':init['inletWaterTemp']},constWater,{'mdot':init['waterFlowRate']}))
     airTube.append(b.Block('airTube_'+str(i),
-      {'T':init['airT']},constAir,{'mdot':init['airFlowRate']}))
+      {'T':init['inletAirTemp']},constAir,{'mdot':init['airFlowRate']}))
   
   # now set up tube regions
   for i in range(init['numModules']):
@@ -143,7 +143,8 @@ def solve(init):
     waterModule[i].addFlux(f.Flux(waterTube[i],heatConvDevice,{'dt':dt}))
 
     # Q_a from DNI
-    airModule[i].addSource(s.Source(s.constant,{'T':-init['Q_a'][i]}))
+    if('Q_w' in init.keys()):
+      airModule[i].addSource(s.Source(s.constant,{'T':-init['Q_a'][i]}))
 
 
   # connect up the regions

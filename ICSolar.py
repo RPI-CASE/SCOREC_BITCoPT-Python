@@ -49,7 +49,7 @@ def solve(inputs):
   airFlowRate = 2.0*0.16*1.200 # kg/s
 
   init = {'dt':3600.,'length':icsolar.moduleH,'waterFlowRate':waterFlowRate,
-  'airFlowRate':airFlowRate,'waterT':inletWaterTemp,'airT':inletAirTemp,
+  'airFlowRate':airFlowRate,'inletWaterTemp':inletWaterTemp,'inletAirTemp':inletAirTemp,
   'airInterior':interiorAirTemp}
 
   ############################################### set up results 
@@ -173,7 +173,7 @@ def solve(inputs):
           g.data['DNIatModule'] = np.zeros(g.nY)
           g.data['DHIatModule'] = np.zeros(g.nY)
           g.data['receiverT'] = np.zeros(g.nY)
-          g.data['airT'] = np.ones(g.nY)*inletAirTemp
+          g.data['inletAirTemp'] = np.ones(g.nY)*inletAirTemp
           g.data['waterModuleT'] = np.ones(g.nY)*inletWaterTemp
           g.data['waterTubeT'] = np.ones(g.nY)*inletWaterTemp
           g.data['thermal'] = np.zeros(g.nY)
@@ -199,8 +199,8 @@ def solve(inputs):
         
         # set up previous temperature
         if (not previousDayTime):
-          init['previousWaterModuleT'] = init['waterT']*np.ones(g.nY)
-          init['previousWaterTubeT'] = init['waterT']*np.ones(g.nY)
+          init['previousWaterModuleT'] = init['inletWaterTemp']*np.ones(g.nY)
+          init['previousWaterTubeT'] = init['inletWaterTemp']*np.ones(g.nY)
         else:
           init['previousWaterModuleT'] = g.data['waterModuleT']
           init['previousWaterTubeT'] = g.data['waterTubeT']
@@ -211,7 +211,7 @@ def solve(inputs):
         # process results for storage 
         g.data['waterModuleT'] = results['waterModule']
         g.data['waterTubeT'] = results['waterTube']
-        g.data['airT'] = results['airModule']
+        g.data['inletAirTemp'] = results['airModule']
         g.data['receiverT'] = results['receiver']
 
         # compute the electrical and thermal energy
@@ -286,7 +286,7 @@ def run(init):
   geometry.computeBlockCounts(icsolar.moduleH,icsolar.moduleW)
 
   dataNames = ['DNI','DNIatModule','DHI','DHIatModule', 'Glazing', \
-               'waterModuleT','waterTubeT','airT','airTExternal',
+               'waterModuleT','waterTubeT','inletAirTemp','airTExternal',
                'receiverT','thermal','electrical']
 
   geometry.initializeData(dataNames)
@@ -467,7 +467,7 @@ if __name__ == "__main__":
   'numProcs':8,
   'tilt':tilt,
   'startDay':0,
-  'days':365,
+  'days':16,
   'directory':'NYC'+str(tilt),
   'TMY':'data/TMY/NYC.csv',
   'geomfile':'data/geometry/whole-building.txt',

@@ -53,7 +53,7 @@ def run(name,nicename):
 
   # timestep is ten seconds
   init = {'dt':10.,'length':icsolar.moduleH,'airInterior':interiorAirTemp, 
-    'airT':interiorAirTemp,'airFlowRate':airFlowRate,'Q_a':np.zeros(6),
+    'inletAirTemp':interiorAirTemp,'airFlowRate':airFlowRate,
     'numModules':6}
 
   ############################################### set up results 
@@ -66,7 +66,7 @@ def run(name,nicename):
     clockStepStart = cputime.time()
 
     init['airExterior'] = data['Tamb'][ts] 
-    init['waterT'] = data['exp_inlet'][ts]
+    init['inletWaterTemp'] = data['exp_inlet'][ts]
     init['waterFlowRate'] = data['exp_flowrate'][ts]*1000.*1e-6 # kg/s
     time = float(data['Timestamp'][ts])
     shade = np.ones(6)
@@ -82,8 +82,8 @@ def run(name,nicename):
     init['Q_d'] = 0.57*625.5*0.0001*data['DNI'][ts]*shade*(1.-0.30)
     # set up previous temperature, if we can
     if (ts == 0):
-      init['previousWaterModuleT'] = init['waterT']*np.ones(6)
-      init['previousWaterTubeT'] = init['waterT']*np.ones(6)
+      init['previousWaterModuleT'] = init['inletWaterTemp']*np.ones(6)
+      init['previousWaterTubeT'] = init['inletWaterTemp']*np.ones(6)
       init['previousWaterFlowRate'] = init['waterFlowRate']
     else:
       init['dt'] = time - data['Timestamp'][ts-1]
