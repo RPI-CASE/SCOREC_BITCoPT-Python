@@ -65,31 +65,16 @@ def solve(problemInputs,solverInputs):
   bins = set([g.dir for g in geometry]);
   bins = list(bins)
   bins.append('total')
+
   thermal = dict([(bb,np.zeros(timesteps)) for bb in bins])
   elect = dict([(bb,np.zeros(timesteps)) for bb in bins])
 
   # this collects things by facade number
   facadeBins = range(len(geometry))
-  epcFacade = []  
-  glazeFacade = []
-  AOIFacade = []
-  yawFacade = []
-  pitchFacade = []
-  shadeFacade = []
-  thermalFacade = []
-  electFacade = []
-  dniFacade = []
-
-  for i in facadeBins:
-    epcFacade.append(np.zeros(timesteps))
-    glazeFacade.append(np.zeros(timesteps))
-    AOIFacade.append(np.zeros(timesteps))
-    yawFacade.append(np.zeros(timesteps))
-    pitchFacade.append(np.zeros(timesteps))
-    shadeFacade.append(np.zeros(timesteps))
-    thermalFacade.append(np.zeros(timesteps))
-    electFacade.append(np.zeros(timesteps))
-    dniFacade.append(np.zeros(timesteps))
+  facadeData = {name:[] for name in solverInputs['dataNames']}
+  for name in solverInputs['dataNames']:
+    for i in range(len(geometry)):
+      facadeData[name].append(np.zeros(timesteps))
 
   area = geometry.getAreas()
   ############################################### pre-computed information
@@ -150,22 +135,16 @@ def solve(problemInputs,solverInputs):
         glaze = max(solar.getGlazingTransmitted(sunPosition,g,1),0)
         AOI = solar.getAOI(sunPosition,g)
         (pitch,yaw) = solar.getArrayAngle(sunPosition,g)
+        facadeData['glaze'][index][ts-startStep] = glaze
+        facadeData['aoi'][index][ts-startStep] = AOI
+        facadeData['yaw'][index][ts-startStep] = yaw
+        facadeData['pitch'][index][ts-startStep] = pitch
+        facadeData['shade'][index][ts-startStep] = shade[int(g.nY/2)] # shading in the middle
+        facadeData['dni'][index][ts-startStep] = DNI[ts-startStep]
 
-        glazeFacade[geometry.index(g)][ts-startStep] = glaze
-        AOIFacade[geometry.index(g)][ts-startStep] = AOI
-        yawFacade[geometry.index(g)][ts-startStep] = yaw
-        pitchFacade[geometry.index(g)][ts-startStep] = pitch
-        shadeFacade[geometry.index(g)][ts-startStep] = shade[int(g.nY/2)]
-        dniFacade[geometry.index(g)][ts-startStep] = DNI[ts-startStep]
-
-        for match in matches:
-          glazeFacade[geometry.index(match)][ts-startStep] = glazeFacade[geometry.index(g)][ts-startStep]
-          AOIFacade[geometry.index(match)][ts-startStep] = AOIFacade[geometry.index(g)][ts-startStep]
-          yawFacade[geometry.index(match)][ts-startStep] = yawFacade[geometry.index(g)][ts-startStep]
-          pitchFacade[geometry.index(match)][ts-startStep] = pitchFacade[geometry.index(g)][ts-startStep]
-          shadeFacade[geometry.index(match)][ts-startStep] = shadeFacade[geometry.index(g)][ts-startStep]
-          dniFacade[geometry.index(match)][ts-startStep] = dniFacade[geometry.index(g)][ts-startStep]
-
+        for name in ['glaze','aoi','yaw','pitch','shade','dni']:
+          for match in matches:
+            facadeData[name][geometry.index(match)] = facadeData[name][index]
         g.data['externalAirT'] = np.ones(g.nY)*exteriorAirTemp[ts-startStep]
 
         # don't solve this facade if the sun can't see it, but zero 
@@ -183,7 +162,6 @@ def solve(problemInputs,solverInputs):
         g.data['Glazing'] = glaze*shadedVector
 
         g.data['DNIatModule'] = g.data['DNI']*glaze*shade
-        # I think this simplifies your math, cos(pi/2-tilt) = sin(tilt)
         g.data['DHIatModule'] = g.data['DHI']*glaze*shade*0.5*(1.+np.sin(g.tilt))
 
         # solverInputs['Q_w'] = 0.024801*(0.66)*1e-3*g.data['DNIatModule']
@@ -215,26 +193,25 @@ def solve(problemInputs,solverInputs):
           *1e-3*0.866*625.5*0.0001*g.data['DNIatModule'])*g.nX
 
         elect[g.dir][ts-startStep] += electData*(1+len(matches))
-        electFacade[geometry.index(g)][ts-startStep] = electData
-        # g.data['electrical'] = solverInputs['eta']*1e-3*0.866*625.5*0.0001*g.data['DNIatModule']
+        facadeData['elect'][index][ts-startStep] = electData
 
         thermalData = np.sum(solverInputs['waterFlowRate']*4.218 \
           *(g.data['waterModuleT']-g.data['waterTubeT']))*g.nX
         g.data['thermal'] = solverInputs['waterFlowRate']*4.218 \
           *(g.data['waterModuleT']-g.data['waterTubeT'])
+        facadeData['epc'][index][ts-startStep] = 0.866*625.5*0.0001*g.data['DNIatModule'][int(g.nY/2)]
 
-        epcFacade[geometry.index(g)][ts-startStep] = 0.866*625.5*0.0001*g.data['DNIatModule'][int(g.nY/2)]
-        for match in matches:
-          epcFacade[geometry.index(match)][ts-startStep] = epcFacade[geometry.index(g)][ts-startStep]
-          electFacade[geometry.index(match)][ts-startStep] = electData
-  
         # only add the contribution if its positive
         if(thermalData > 0):
           thermal[g.dir][ts-startStep] += thermalData*(1+len(matches))
-          thermalFacade[index][ts-startStep] = thermalData
+          facadeData['thermal'][index][ts-startStep] = thermalData
+        for name in ['thermal','elect','epc']:
           for match in matches:
-            thermalFacade[geometry.index(match)][ts-startStep] = thermalData
+            facadeData[name][geometry.index(match)] = facadeData[name][index]
+
+    # done with the step        
     previousDayTime = daytime
+
     thermal['total'][ts-startStep] = sum([thermal[b][ts-startStep] for b in bins])
     elect['total'][ts-startStep] = sum([elect[b][ts-startStep] for b in bins])
     # post processing and cleanup
@@ -243,7 +220,7 @@ def solve(problemInputs,solverInputs):
       casegeom.writeVTKfile(geometry,'Results/'+directory+'/geom'+'0'*(4-len(str(ts)))+str(ts)+'.vtk','')
  
   print "runtime for days",startDay,"to",startDay+days-1,":",'%.2f' % (cputime.time()-clockStart)
-  return (elect,thermal,electFacade,thermalFacade,epcFacade,glazeFacade,AOIFacade,shadeFacade,yawFacade,pitchFacade,dniFacade)
+  return (elect,thermal,facadeData)
 
 """
 This is a load balancing step, because dividing up the days by the number of processors
@@ -282,11 +259,9 @@ def run(init,solverInputs):
     init['useSunlitFraction'])
   geometry.computeBlockCounts(icsolar.moduleHeight,icsolar.moduleWidth)
 
-  dataNames = ['DNI','DNIatModule','DHI','DHIatModule', 'Glazing', \
-               'waterModuleT','waterTubeT','inletAirTemp','externalAirT',
-               'receiverT','thermal','electrical']
 
-  geometry.initializeData(dataNames)
+
+  geometry.initializeData(init['dataNames'])
   casegeom.tiltGeometry(geometry,init['tilt'],init['useSunlitFraction'])
 
   stepsPerDay = 24
@@ -308,27 +283,10 @@ def run(init,solverInputs):
   elect = dict([(bb,np.zeros(timesteps)) for bb in bins])
 
   # this collects things by facade number
-  facadeBins = range(len(geometry))
-  epcFacade = []
-  thermalFacade = []
-  electFacade = []
-  glazeFacade = []
-  AOIFacade = []
-  yawFacade = []
-  pitchFacade = []
-  shadeFacade = []
-  dniFacade = []
-
-  for i in facadeBins:
-    epcFacade.append(np.zeros(timesteps))
-    glazeFacade.append(np.zeros(timesteps))
-    AOIFacade.append(np.zeros(timesteps))
-    yawFacade.append(np.zeros(timesteps))
-    pitchFacade.append(np.zeros(timesteps))
-    shadeFacade.append(np.zeros(timesteps))
-    thermalFacade.append(np.zeros(timesteps))
-    electFacade.append(np.zeros(timesteps))
-    dniFacade.append(np.zeros(timesteps))
+  facadeData = {name:[] for name in solverInputs['dataNames']}
+  for name in solverInputs['dataNames']:
+    for i in range(len(geometry)):
+      facadeData[name].append(np.zeros(timesteps))
 
   area = geometry.getAreas()
 
@@ -350,7 +308,7 @@ def run(init,solverInputs):
     'DNI':DNI[stepRange],
     'exteriorAirTemp':exteriorAirTemp[stepRange],
     'DHI':DHI[stepRange],
-    'stepsPerDay':24,
+    'stepsPerDay':init['stepsPerDay'],
     }
     problemInputs.append(inputDict)
 
@@ -365,16 +323,9 @@ def run(init,solverInputs):
     for b in bins:
       elect[b][resultRange] = results[i][0][b]
       thermal[b][resultRange] = results[i][1][b]
-    for j in facadeBins:
-      electFacade[j][resultRange] = results[i][2][j]
-      thermalFacade[j][resultRange] = results[i][3][j]
-      epcFacade[j][resultRange] = results[i][4][j]
-      glazeFacade[j][resultRange] = results[i][5][j]
-      AOIFacade[j][resultRange] = results[i][6][j]
-      shadeFacade[j][resultRange] = results[i][7][j]
-      yawFacade[j][resultRange] = results[i][8][j]
-      pitchFacade[j][resultRange] = results[i][9][j]
-      dniFacade[j][resultRange] = results[i][10][j]
+    for j in range(len(geometry)):
+      for name in solverInputs['dataNames']:
+        facadeData[name][j][resultRange] = results[i][2][name][j]
 
   ############################################### write Data Files if requested
   if init['writeDataFiles']:
@@ -384,27 +335,24 @@ def run(init,solverInputs):
       outputfiles[b].write('#time,thermal,electrical\n')
 
     outputFacadeFiles = {}
-    for b in facadeBins:
-      outputFacadeFiles[b] = (open('Results/'+init['directory']+'/output_'+str(b)+'.txt','w'))
-      outputFacadeFiles[b].write('#time,thermal,electrical,epc,glaze,AOI,shade,yaw,pitch\n')
+    for j in range(len(geometry)):
+      outputFacadeFiles[j] = (open('Results/'+init['directory']+'/output_'+str(j)+'.txt','w'))
+      outputFacadeFiles[j].write('#time,'+','.join(solverInputs['dataNames'])+'\n')
 
     for ts in range(startStep,endStep):
 
       for b in bins:
-        outputfiles[b].write(','.join([str(ts),'%.12e' % thermal[b][ts-startStep], \
+        outputfiles[b].write(','.join([str(ts*init['stepsPerDay']),'%.12e' % thermal[b][ts-startStep], \
           '%.12e' % elect[b][ts-startStep]])+'\n')
-      for b in facadeBins:
-        outputFacadeFiles[b].write(','.join([str(ts),'%.3e' % thermalFacade[b][ts-startStep],\
-          '%.3e' % electFacade[b][ts-startStep],'%.3e' % epcFacade[b][ts-startStep],\
-          '%.3e' % glazeFacade[b][ts-startStep], '%.3e' % AOIFacade[b][ts-startStep],
-          '%.3e' % shadeFacade[b][ts-startStep], '%.3e' % yawFacade[b][ts-startStep],
-          '%.3e' % pitchFacade[b][ts-startStep],'%.3e' % dniFacade[b][ts-startStep]])+'\n')
+      for j in range(len(geometry)):
+        outputFacadeFiles[j].write(str(ts*init['stepsPerDay'])+','+','.join(['%.3e' % facadeData[name][j][ts-startStep] \
+          for name in solverInputs['dataNames']])+'\n')
 
 
     for b in bins:
       outputfiles[b].close()
-    for b in facadeBins:
-      outputFacadeFiles[b].close()
+    for j in range(len(geometry)):
+      outputFacadeFiles[j].close()
 
 
   ################# Cumulative Sum per Facade Area
@@ -463,7 +411,7 @@ if __name__ == "__main__":
   init = { 
   'numProcs':2,
   'tilt':tilt,
-  'startDay':0,
+  'startDay':2,
   'days':4,
   'directory':'NYC'+str(tilt),
   'TMY':'data/TMY/NYC.csv',
@@ -472,6 +420,10 @@ if __name__ == "__main__":
   'writeDataFiles':True,
   'writeVTKFiles':True,
   'stepsPerDay':24,
+  # data on VTK files (a number for each module)
+  'dataNames':['DNI','DNIatModule','DHI','DHIatModule', 'Glazing', \
+               'waterModuleT','waterTubeT','inletAirTemp','externalAirT',
+               'receiverT','thermal','electrical']
   }
 
   solverInputs = {
@@ -484,8 +436,9 @@ if __name__ == "__main__":
   'waterFlowRate':1.6*1000.*1e-6, # 1.6 mL/s in kg/s
   # 2.0 m/s * 0.16, cross sectional area, times density in kg/s
   'airFlowRate':2.0*0.16*1.200,
-  'dataNames':['epc','glaze','AOI','yaw','pitch',
-    'shade','thermal','dni','thermal','elect'],
+  # data for each facade (one number for each facade)
+  'dataNames':['epc','glaze','aoi','yaw','pitch',
+    'shade','dni','thermal','elect'],
   }
 
   run(init,solverInputs)
