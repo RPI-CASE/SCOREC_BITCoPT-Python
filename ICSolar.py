@@ -13,6 +13,23 @@ import os
 from joblib import Parallel, delayed
 
 """
+This is used to disable the warnings which occur when 
+solving an ill-conditioned problem
+such as DNI ~ 0. 
+
+The warning:
+
+minpack.py:236: RuntimeWarning: The iteration is not making 
+  good progress, as measured by the 
+  improvement from the last ten iterations.
+
+is fairly common, and as such is filtered out
+"""
+
+import warnings
+warnings.filterwarnings("ignore", message = 'The iteration is not making good progress')
+
+"""
 This file contains an example run for ICSolar with geometry
 It relies on the icsolar problem setup in src.icsolar,
 as well as support functions in other files.
@@ -20,7 +37,6 @@ as well as support functions in other files.
 All results will end up in Results/<directory name>
 
 """
-
 def solve(inputs):
 
   ############################################### input parameters
@@ -48,9 +64,15 @@ def solve(inputs):
   # 2.0 m/s * 0.16, cross sectional area, times density
   airFlowRate = 2.0*0.16*1.200 # kg/s
 
-  init = {'dt':3600.,'length':icsolar.moduleHeight,'waterFlowRate':waterFlowRate,
-  'airFlowRate':airFlowRate,'inletWaterTemp':inletWaterTemp,'inletAirTemp':inletAirTemp,
-  'interiorAirTemp':interiorAirTemp}
+  ICSolarInput = {
+  'dt':stepsPerDay/24.*3600.,
+  'length':icsolar.moduleHeight,
+  'waterFlowRate':waterFlowRate,
+  'airFlowRate':airFlowRate,
+  'inletWaterTemp':inletWaterTemp,
+  'inletAirTemp':inletAirTemp,
+  'interiorAirTemp':interiorAirTemp
+  }
 
   ############################################### set up results 
   if not os.path.exists('Results/'+directory):
@@ -65,7 +87,7 @@ def solve(inputs):
 
   # this collects things by facade number
   facadeBins = range(len(geometry))
-  epcFacade = []
+  epcFacade = []  
   glazeFacade = []
   AOIFacade = []
   yawFacade = []
@@ -114,9 +136,9 @@ def solve(inputs):
     if(1 < ts and ts < endStep-1):
       daytime = (DNI[ts-startStep-1]+DNI[ts-startStep]+DNI[ts-startStep+1] > 0)
 
-    # once the first daytime hits, we are done initializing
-    time = init['dt']*ts
-    init['exteriorAirTemp'] = exteriorAirTemp[ts-startStep]
+    # once the first daytime hits, we are done ICSolarInputializing
+    time = ICSolarInput['dt']*ts
+    ICSolarInput['exteriorAirTemp'] = exteriorAirTemp[ts-startStep]
 
     # solarVector
     sunPosition = solar.getSunPosition(time)
@@ -133,7 +155,7 @@ def solve(inputs):
           sunlit = 0.
           averaged = True
         elif useSunlitFraction is True:
-          (sunlit,averaged) = shading.getMeanSunlitFraction(geometry,g,time,init['dt'],5)
+          (sunlit,averaged) = shading.getMeanSunlitFraction(geometry,g,time,ICSolarInput['dt'],5)
         else:
           sunlit = 1.0
           averaged = True
@@ -190,23 +212,23 @@ def solve(inputs):
         # I think this simplifies your math, cos(pi/2-tilt) = sin(tilt)
         g.data['DHIatModule'] = g.data['DHI']*glaze*shade*0.5*(1.+np.sin(g.tilt))
 
-        # init['Q_w'] = 0.024801*(0.66)*1e-3*g.data['DNIatModule']
-        init['Q_d'] = 0.866*625.5*0.0001*g.data['DNIatModule']*(1.-eta)
-        init['Q_a'] = np.zeros(g.nY)
+        # ICSolarInput['Q_w'] = 0.024801*(0.66)*1e-3*g.data['DNIatModule']
+        ICSolarInput['Q_d'] = 0.866*625.5*0.0001*g.data['DNIatModule']*(1.-eta)
+        ICSolarInput['Q_a'] = np.zeros(g.nY)
         # (Q_c,Q_I) = support.getRadiativeGain(sunPosition,g,g.data['DNIatModule'],g.data['DHIatModule'])
-        # init['Q_c'] = g.data['DHIatModule']*icsolar.moduleHeight*icsolar.moduleWidth
-        init['numModules'] = g.nY
+        # ICSolarInput['Q_c'] = g.data['DHIatModule']*icsolar.moduleHeight*icsolar.moduleWidth
+        ICSolarInput['numModules'] = g.nY
         
         # set up previous temperature
         if (not previousDayTime):
-          init['previousWaterModuleT'] = init['inletWaterTemp']*np.ones(g.nY)
-          init['previousWaterTubeT'] = init['inletWaterTemp']*np.ones(g.nY)
+          ICSolarInput['previousWaterModuleT'] = ICSolarInput['inletWaterTemp']*np.ones(g.nY)
+          ICSolarInput['previousWaterTubeT'] = ICSolarInput['inletWaterTemp']*np.ones(g.nY)
         else:
-          init['previousWaterModuleT'] = g.data['waterModuleT']
-          init['previousWaterTubeT'] = g.data['waterTubeT']
+          ICSolarInput['previousWaterModuleT'] = g.data['waterModuleT']
+          ICSolarInput['previousWaterTubeT'] = g.data['waterTubeT']
 
         # solve the problem
-        results = icsolar.solve(init)
+        results = icsolar.solve(ICSolarInput)
 
         # process results for storage 
         g.data['waterModuleT'] = results['waterModule']
@@ -222,9 +244,9 @@ def solve(inputs):
         electFacade[geometry.index(g)][ts-startStep] = electData
         # g.data['electrical'] = eta*1e-3*0.866*625.5*0.0001*g.data['DNIatModule']
 
-        thermalData = np.sum(init['waterFlowRate']*4.218 \
+        thermalData = np.sum(ICSolarInput['waterFlowRate']*4.218 \
           *(g.data['waterModuleT']-g.data['waterTubeT']))*g.nX
-        g.data['thermal'] = init['waterFlowRate']*4.218 \
+        g.data['thermal'] = ICSolarInput['waterFlowRate']*4.218 \
           *(g.data['waterModuleT']-g.data['waterTubeT'])
 
         epcFacade[geometry.index(g)][ts-startStep] = 0.866*625.5*0.0001*g.data['DNIatModule'][int(g.nY/2)]
@@ -248,6 +270,7 @@ def solve(inputs):
  
   print "runtime for days",startDay,"to",startDay+days-1,":",'%.2f' % (cputime.time()-clockStart)
   return (elect,thermal,electFacade,thermalFacade,epcFacade,glazeFacade,AOIFacade,shadeFacade,yawFacade,pitchFacade,dniFacade)
+
 """
 This is a load balancing step, because dividing up the days by the number of processors
 isn't ideal, we can do a lot better with a little bit of work. The assumption is that
@@ -467,7 +490,7 @@ if __name__ == "__main__":
   'numProcs':8,
   'tilt':tilt,
   'startDay':0,
-  'days':16,
+  'days':365,
   'directory':'NYC'+str(tilt),
   'TMY':'data/TMY/NYC.csv',
   'geomfile':'data/geometry/whole-building.txt',
