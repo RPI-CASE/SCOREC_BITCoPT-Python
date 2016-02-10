@@ -58,8 +58,10 @@ def run(name,nicename):
   }
 
   ############################################### set up results 
-  if not os.path.exists('ValidationResults'):
-    os.makedirs('ValidationResults')
+  if not os.path.exists('Results'):
+    os.makedirs('Results')
+  if not os.path.exists('Results/Validation'):
+    os.makedirs('Results/Validation')
   ############################################### solver
 
   for ts in range(n):
@@ -99,7 +101,7 @@ def run(name,nicename):
       receiverTemp[i][ts] = results['receiver'][i]
 
   for i in range(6):
-    np.savetxt('ValidationResults/'+name+'_'+str(i)+'.txt',moduleTemp[i],
+    np.savetxt('Results/Validation/'+name+'_'+str(i)+'.txt',moduleTemp[i],
       fmt='%2.2f',delimiter=',')
 
   ############################################### cleanup
@@ -146,7 +148,7 @@ def run(name,nicename):
     plt.gca().set_xlim([t[0],int(max(t)/10)*10])
     plt.tight_layout()
 
-    plt.savefig('ValidationResults/' + name+'_module_'+str(i+1)+'.png')
+    plt.savefig('Results/Validation/' + name+'_module_'+str(i+1)+'.png')
 
     plt.close()
 

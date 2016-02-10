@@ -3,5 +3,4 @@
 *.aux
 *.log
 *~
-ValidationResults/*
 Results/*
