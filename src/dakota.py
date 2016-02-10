@@ -18,7 +18,7 @@ of interest
 https://dakota.sandia.gov/
 
 """
-def writeICSDakotaInputFile(filename,DNISTD,day,quadOrder):
+def writeICSDakotaInputFile(filename,DNISTD,day,directory,quadOrder):
   f = open(filename,'w')
   f.write("# Dakota Input File: "+filename+"\n")
   f.write("environment\n")
@@ -46,9 +46,9 @@ def writeICSDakotaInputFile(filename,DNISTD,day,quadOrder):
   f.write("\n")
   f.write("interface\n")
   f.write("  system\n")
-  f.write("  analysis_drivers = 'python ICS_Dakota_Driver.py'\n")
-  f.write("  parameters_file = 'testUQ/params"+str(day)+".in'\n")
-  f.write("  results_file = 'testUQ/results"+str(day)+".out'\n")
+  f.write("  analysis_drivers = 'python ICSolar_Dakota.py'\n")
+  f.write("  parameters_file = 'Results/UQ/"+directory+'/'+"params"+str(day)+".in'\n")
+  f.write("  results_file = 'Results/UQ/"+directory+'/'+"results"+str(day)+".out'\n")
   f.write("  file_tag\n  file_save\n")
   f.write("\n")
   f.write("responses\n")
