@@ -16,26 +16,61 @@ import time as cputime
 import src.dakota as dakota
 """
 Each day will get its own dakota input file
-This driver function will handle all the results processing
+This file acts as a driver, calling dakota on itself.
+
+When called with no inputs, this file starts the driving process,
+If inputs are provided, it is assumed dakota has called it, and a seperate 
+routine is called. This file uses a reduced version of the ICSolar.py 
+whole-building model, with less input and output and two versions of the solve,
+
+its a bit of an ad-hoc file, but conceptually the idea is,
+for each day, DNI = DNI(1+stddev)
+where stddev is a gaussian process variable, effectively a %
+that should be between [-1,1], and is computed by dakota
+Each day has a fixed stddev, based on TMY day in obtained from readTMYUQ
+
+solveUQ below deals with all of this, creating mean and std deviations to pass into 
+dakota by creating dakota input files and calling dakota on each, with each day
+treated independently, 
+
+Finally, the run function puts everything together once dakota is done,
+and files are left in Results/UQ
+
+the quadOrder variable controls the number of coefficients in the PCE expansion
 
 """
 
+
+"""
+This is the driver of the system, calling dakota over and over
+for each day. This is only called once, and organizes everything
+"""
 def solveUQ(problemInputs,solverInputs):
+  # get DNI and DNI standard deviation
   (DNI,DNIUQ,extAirT,DHI,timezone,lat,lon,city) = \
     weather.readTMYUQ(problemInputs['TMY'])
   start = problemInputs['range'][0]
   end = problemInputs['range'][1]
+
+  # start collecting mean data and std deviations, and coefficients
   meanArray = np.zeros(end-start)
   stddevArray = np.zeros(end-start)
   coeffArray = []
-  for day in range(start,end):    
-    UQ = max(DNIUQ[(day*24):((day+1)*24)])
+  # for each day we are interested in
+  for day in range(start,end):
+    # the uncertainty on the day is the max seen in the TMY data
+    UQ = max(DNIUQ[(day*24):((day+1)*24)]) 
+    # write the dakota input file for that day
     dakotafile = 'ICS'+str(day)+'.in'
-    dakota.writeICSDakotaInputFile('Results/UQ/'+problemInputs['directory']+'/'+dakotafile,UQ,day,problemInputs['directory'],problemInputs['quadOrder'])
+    dakota.writeICSDakotaInputFile('Results/UQ/'+problemInputs['directory']+'/'+dakotafile,
+      UQ,day,problemInputs['directory'],problemInputs['quadOrder'])
+    # call dakota
     os.system('dakota --output=Results/UQ/'+problemInputs['directory']+'/'+'dakota'+str(day)+'.out '+
       '--error=Results/UQ/'+problemInputs['directory']+'/dakota'+str(day)+'.err Results/UQ/'
       +problemInputs['directory']+'/'+dakotafile)
-    (mean,stddev,coeff) = dakota.readOutputFile('Results/UQ/'+problemInputs['directory']+'/dakota'+str(day)+'.out',problemInputs['quadOrder'])
+    # read the output file and collect output
+    (mean,stddev,coeff) = dakota.readOutputFile('Results/UQ/'+problemInputs['directory']+\
+      '/dakota'+str(day)+'.out',problemInputs['quadOrder'])
     meanArray[day-start] = mean
     stddevArray[day-start] = stddev
     coeffArray.append(coeff)
@@ -48,12 +83,13 @@ and is used per process, in parallel
 it also calls icsolar.solve and handles
 solving at each timestep, and keeping track of data
 
-This is where data gets created and stored
+This function is called by dakota, over and over for each day
 
 """
 def solve(problemInputs,solverInputs):
   ############################################### take data from problemInputs
-    # set up geometry
+  # set up geometry, unlike ICSolar.py geometry and TMY data is re-created on each call
+  # to this, since dakota is calling this almost directly
   geometry = casegeom.readFile(problemInputs['geometry'],"ICSolar",
     init['useSunlitFraction'])
   geometry.computeBlockCounts(icsolar.moduleHeight,icsolar.moduleWidth)
@@ -64,13 +100,10 @@ def solve(problemInputs,solverInputs):
   directory = problemInputs['directory']
   startDay = problemInputs['range'][0]
   endDay = problemInputs['range'][1]
-  if('DNI' not in problemInputs):
-    (DNI,exteriorAirTemp,DHI,timezone,lat,lon,city) = \
-    weather.readTMY(problemInputs['TMY'])
-  else:
-    DNI = problemInputs['DNI']
-    exteriorAirTemp = problemInputs['exteriorAirTemp']
-    DHI = problemInputs['DHI']
+
+  (DNI,exteriorAirTemp,DHI,timezone,lat,lon,city) = weather.readTMY(problemInputs['TMY'])
+  solar.setTimezone(timezone)
+  solar.setLocation(lat,lon)
 
   stepsPerDay = problemInputs['stepsPerDay']
 
@@ -81,7 +114,7 @@ def solve(problemInputs,solverInputs):
 
   ############################################### set up results 
 
-  # this bins things by facade direction
+  # this bins things by direction
   bins = set([g.dir for g in geometry]);
   bins = list(bins)
   bins.append('total')
@@ -115,8 +148,8 @@ def solve(problemInputs,solverInputs):
     if(1 < ts and ts < endStep-1):
       daytime = (DNI[ts-startStep-1]+DNI[ts-startStep]+DNI[ts-startStep+1] > 0)
 
+    # Do the DNI calculation for that hour, and zero it if the standard deviation is < -1
     DNI[ts-startStep] = DNI[ts-startStep]*(1+solverInputs['DNISTD'])
-    # print ts, DNI[ts], DNISTD
     if(DNI[ts-startStep] < 1e-10):
       DNI[ts-startStep] = 0.
 
@@ -152,7 +185,6 @@ def solve(problemInputs,solverInputs):
         for m in range(g.nY):
           shade[m] = shading.getUnshadedFraction(sunPosition,g,
             shadingIndices[index][m])
-
 
         glaze = max(solar.getGlazingTransmitted(sunPosition,g,1),0)
 
@@ -257,12 +289,11 @@ def loadBalance(days,startDay,numProc,DNI):
   pairs.append((procStartDay,startDay+days))
   return pairs
 
+"""
+This function gets called once, which starts solveUQ in parallel, 
+each day can still be done in parallel, with dakota running in serial on each day
+"""
 def run(init,solverInputs):
-  ############################################### data loading 
-  (DNI,exteriorAirTemp,DHI,timezone,lat,lon,city) = weather.readTMY(init['TMY'])
-  solar.setTimezone(timezone)
-  solar.setLocation(lat,lon)
-
   stepsPerDay = 24
   timesteps = init['days']*stepsPerDay
   startStep = init['startDay']*stepsPerDay
@@ -273,6 +304,10 @@ def run(init,solverInputs):
 
   ############################################### set up results
   # create the directories
+  if not os.path.exists('Results'):
+    os.makedirs('Results')
+  if not os.path.exists('Results/UQ'):
+    os.makedirs('Results/UQ')
   if not os.path.exists('Results/UQ/'+init['directory']):
     os.makedirs('Results/UQ/'+init['directory'])
 
@@ -301,6 +336,7 @@ def run(init,solverInputs):
     }
     problemInputs.append(inputDict)
 
+  # sets up the data to plot, calls solveUQ
   mean = np.zeros(init['days'])
   stddev = np.zeros(init['days'])
   coeffArray = []
@@ -308,7 +344,7 @@ def run(init,solverInputs):
     coeffArray.append(np.zeros(init['days']))
 
   results = Parallel(n_jobs = init['numProcs'])(delayed(solveUQ)(problemInputs[i],solverInputs) \
-      for i in range(init['numProcs']))
+    for i in range(init['numProcs']))
 
   for i in range(init['numProcs']):
     (start,end) = procSplit[i]
@@ -331,12 +367,10 @@ def run(init,solverInputs):
   plt.ylabel('Total Output (kWh)'), plt.xlabel('Time (Days)')
   plt.xlim(init['startDay'],init['startDay']+init['days']-1)
 
-
   plt.gcf().set_size_inches(15,5)
   plt.tight_layout()
   plt.savefig('Results/UQ/'+init['directory']+'/'+str(init['quadOrder'])+'_outputs.png')
   plt.close()
-
 
   for i in range(init['quadOrder']):
     plt.semilogy(range(init['startDay'],init['startDay']+init['days']),abs(coeffArray[i])/abs(coeffArray[0]),'-',label=str(i),linewidth=2)
@@ -349,7 +383,6 @@ def run(init,solverInputs):
   plt.close()
 
   # lets try and cleanup
-
   fileList = os.listdir('.')
   for f in fileList:
     if f.startswith('LHS') or '.rst' in f or 'S4' in f:
@@ -358,7 +391,7 @@ def run(init,solverInputs):
 if __name__ == "__main__":
   tilt = 0
 
-  # these are general variables
+  # these are general variables, days should be greater than 1 for meaningful plots
   init = { 
   'numProcs':1,
   'tilt':tilt,
@@ -394,6 +427,8 @@ if __name__ == "__main__":
   'directionDataNames':['thermal','elect'],
   }
 
+  # if there are arguments, dakota is calling this function,
+  # bypass solveUQ here
   if (len(sys.argv)) > 1:
     paramfile = sys.argv[1]
     # read the parameter file, and start the run again
