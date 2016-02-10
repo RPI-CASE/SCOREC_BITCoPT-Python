@@ -17,6 +17,7 @@ import src.dakota as dakota
 """
 Each day will get its own dakota input file
 This driver function will handle all the results processing
+
 """
 
 def solveUQ(problemInputs,solverInputs):
@@ -347,6 +348,12 @@ def run(init,solverInputs):
   plt.savefig('Results/UQ/'+init['directory']+'/'+str(init['quadOrder'])+'_expansion.png')
   plt.close()
 
+  # lets try and cleanup
+
+  fileList = os.listdir('.')
+  for f in fileList:
+    if f.startswith('LHS') or '.rst' in f or 'S4' in f:
+      os.rename(f,'Results/UQ/'+f)
 
 if __name__ == "__main__":
   tilt = 0
@@ -356,13 +363,13 @@ if __name__ == "__main__":
   'numProcs':1,
   'tilt':tilt,
   'startDay':0,
-  'days':5,
+  'days':4,
   'directory':'NYC'+str(tilt),
   'TMY':'data/TMY/NYC.csv',
   'geometry':'data/geometry/whole-building.txt',
   'useSunlitFraction':True,
   'stepsPerDay':24,
-  'quadOrder':3,
+  'quadOrder':2,
   }
 
   init['range'] = (init['startDay'],init['startDay']+init['days'])
