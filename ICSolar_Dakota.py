@@ -40,6 +40,24 @@ the quadOrder variable controls the number of coefficients in the PCE expansion
 
 """
 
+"""
+This is used to disable the warnings which occur when 
+solving an ill-conditioned problem
+such as DNI ~ 0. 
+
+The warning:
+
+minpack.py:236: RuntimeWarning: The iteration is not making 
+  good progress, as measured by the 
+  improvement from the last ten iterations.
+
+is fairly common, and as such is filtered out
+"""
+
+import warnings
+warnings.filterwarnings("ignore", \
+  message = 'The iteration is not making good progress')
+
 
 """
 This is the driver of the system, calling dakota over and over
@@ -47,8 +65,7 @@ for each day. This is only called once, and organizes everything
 """
 def solveUQ(problemInputs,solverInputs):
   # get DNI and DNI standard deviation
-  (DNI,DNIUQ,extAirT,DHI,timezone,lat,lon,city) = \
-    weather.readTMYUQ(problemInputs['TMY'])
+  data = weather.readTMYUQ(problemInputs['TMY'])
   start = problemInputs['range'][0]
   end = problemInputs['range'][1]
 
@@ -59,7 +76,7 @@ def solveUQ(problemInputs,solverInputs):
   # for each day we are interested in
   for day in range(start,end):
     # the uncertainty on the day is the max seen in the TMY data
-    UQ = max(DNIUQ[(day*24):((day+1)*24)]) 
+    UQ = max(data['DNIUQ'][(day*24):((day+1)*24)]) 
     # write the dakota input file for that day
     dakotafile = 'ICS'+str(day)+'.in'
     dakota.writeICSDakotaInputFile('Results/UQ/'+problemInputs['directory']+'/'+dakotafile,
@@ -101,10 +118,13 @@ def solve(problemInputs,solverInputs):
   startDay = problemInputs['range'][0]
   endDay = problemInputs['range'][1]
 
-  (DNI,exteriorAirTemp,DHI,timezone,lat,lon,city) = weather.readTMY(problemInputs['TMY'])
-  solar.setTimezone(timezone)
-  solar.setLocation(lat,lon)
+  data = weather.readTMY(problemInputs['TMY'])
+  DNI = data['DNI']
+  DHI = data['DHI']
+  exteriorAirTemp = data['airTemp']
 
+  solar.setTimezone(data['timezone'])
+  solar.setLocation(data['lat'],data['lon'])
   stepsPerDay = problemInputs['stepsPerDay']
 
   days = endDay - startDay
@@ -294,6 +314,13 @@ This function gets called once, which starts solveUQ in parallel,
 each day can still be done in parallel, with dakota running in serial on each day
 """
 def run(init,solverInputs):
+  data = weather.readTMY(init['TMY'])
+  DNI = data['DNI']
+  DHI = data['DHI']
+  exteriorAirTemp = data['airTemp']
+
+  solar.setTimezone(data['timezone'])
+  solar.setLocation(data['lat'],data['lon'])
   stepsPerDay = 24
   timesteps = init['days']*stepsPerDay
   startStep = init['startDay']*stepsPerDay
@@ -385,7 +412,7 @@ def run(init,solverInputs):
   # lets try and cleanup
   fileList = os.listdir('.')
   for f in fileList:
-    if f.startswith('LHS') or '.rst' in f or 'S4' in f:
+    if f.startswith('LHS') or 'dakota.rst' in f or 'S4' in f:
       os.rename(f,'Results/UQ/'+f)
 
 if __name__ == "__main__":

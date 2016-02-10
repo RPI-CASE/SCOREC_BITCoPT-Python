@@ -16,50 +16,53 @@ def readTMY(filename):
   f = open(filename,'r')
   lines = f.readlines()
   f.close()
-  city = lines[0].split(',')[1]
-  timezone = float(lines[0].split(',')[3])
-  lat = float(lines[0].split(',')[4])
-  lon = float(lines[0].split(',')[5])
+
+  data = {}
+  data['city'] = lines[0].split(',')[1]
+  data['timezone'] = float(lines[0].split(',')[3])
+  data['lat'] = float(lines[0].split(',')[4])
+  data['lon'] = float(lines[0].split(',')[5])
 
   AIRindex = lines[1].split(',').index('Dry-bulb (C)')
   DNIindex = lines[1].split(',').index('DNI (W/m^2)')
   DHIindex = lines[1].split(',').index('DHI (W/m^2)')
   # Direct Normal Irradiance
-  DNI = [float(lines[i].split(',')[DNIindex]) 
+  data['DNI'] = [float(lines[i].split(',')[DNIindex]) 
     for i in range(2,len(lines))]
   # Dry-Bulb Air Temperature
-  airTemp = [float(lines[i].split(',')[AIRindex]) 
+  data['airTemp'] = [float(lines[i].split(',')[AIRindex]) 
     for i in range(2,len(lines))]
   # Diffuse Horizontal Irradiance
-  DHI = [float(lines[i].split(',')[DHIindex]) 
+  data['DHI'] = [float(lines[i].split(',')[DHIindex]) 
     for i in range(2,len(lines))]
 
-  return (DNI,airTemp,DHI,timezone,lat,lon,city)
+  return data
 
 def readTMYUQ(filename):
   f = open(filename,'r')
   lines = f.readlines()
   f.close()
-  city = lines[0].split(',')[1]
-  timezone = float(lines[0].split(',')[3])
-  lat = float(lines[0].split(',')[4])
-  lon = float(lines[0].split(',')[5])
+  data = {}
+  data['city'] = lines[0].split(',')[1]
+  data['timezone'] = float(lines[0].split(',')[3])
+  data['lat'] = float(lines[0].split(',')[4])
+  data['lon'] = float(lines[0].split(',')[5])
 
   AIRindex = lines[1].split(',').index('Dry-bulb (C)')
   DNIindex = lines[1].split(',').index('DNI (W/m^2)')
-  DNIindexUQ = lines[1].split(',').index('DNI uncert (%)')
+  DNIUQindex = lines[1].split(',').index('DNI uncert (%)')
 
   DHIindex = lines[1].split(',').index('DHI (W/m^2)')
   # Direct Normal Irradiance
-  DNI = [float(lines[i].split(',')[DNIindex]) 
+  data['DNI'] = [float(lines[i].split(',')[DNIindex]) 
     for i in range(2,len(lines))]
-  DNIUQ = [float(lines[i].split(',')[DNIindexUQ]) 
+  data['DNIUQ'] = [float(lines[i].split(',')[DNIUQindex]) 
     for i in range(2,len(lines))]
   # Dry-Bulb Air Temperature
-  airTemp = [float(lines[i].split(',')[AIRindex]) 
+  data['airTemp'] = [float(lines[i].split(',')[AIRindex]) 
     for i in range(2,len(lines))]
   # Diffuse Horizontal Irradiance
-  DHI = [float(lines[i].split(',')[DHIindex]) 
+  data['DHI'] = [float(lines[i].split(',')[DHIindex]) 
     for i in range(2,len(lines))]
 
-  return (DNI,DNIUQ,airTemp,DHI,timezone,lat,lon,city)
+  return data

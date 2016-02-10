@@ -296,10 +296,14 @@ This also does the parallelization, load balancing, time zones, etc
 
 """
 def run(init,solverInputs):
-  ############################################### data loading 
-  (DNI,exteriorAirTemp,DHI,timezone,lat,lon,city) = weather.readTMY(init['TMY'])
-  solar.setTimezone(timezone)
-  solar.setLocation(lat,lon)
+  ############################################### data loading
+  data = weather.readTMY(init['TMY'])
+  DNI = data['DNI']
+  DHI = data['DHI']
+  exteriorAirTemp = data['airTemp']
+
+  solar.setTimezone(data['timezone'])
+  solar.setLocation(data['lat'],data['lon'])
 
   # set up geometry
   geometry = casegeom.readFile(init['geomfile'],"ICSolar",
@@ -367,7 +371,7 @@ def run(init,solverInputs):
     problemInputs.append(inputDict)
 
   results = Parallel(n_jobs = init['numProcs'])(delayed(solve)(problemInputs[i],solverInputs) for i in range(init['numProcs']))
-  print city,'final runtime is','%.2f' % (cputime.time()-clockStart)
+  print data['city'],'final runtime is','%.2f' % (cputime.time()-clockStart)
 
   ############################################### collapse results
 
