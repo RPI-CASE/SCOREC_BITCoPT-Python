@@ -393,10 +393,10 @@ if __name__ == "__main__":
 
   # these are general variables, days should be greater than 1 for meaningful plots
   init = { 
-  'numProcs':1,
+  'numProcs':8,
   'tilt':tilt,
   'startDay':0,
-  'days':4,
+  'days':365,
   'directory':'NYC'+str(tilt),
   'TMY':'data/TMY/NYC.csv',
   'geometry':'data/geometry/whole-building.txt',
