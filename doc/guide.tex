@@ -1,0 +1,227 @@
+\documentclass[11pt]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[top=60pt, bottom=60pt, left=70pt, right=70pt]{geometry}
+\usepackage{graphicx}
+% Default fixed font does not support bold face
+\DeclareFixedFont{\ttb}{T1}{txtt}{bx}{n}{8} % for bold
+\DeclareFixedFont{\ttm}{T1}{txtt}{m}{n}{8}  % for normal
+
+% Custom colors
+\usepackage{color}
+\definecolor{deepblue}{rgb}{0,0,0.5}
+\definecolor{deepred}{rgb}{0.6,0,0}
+\definecolor{deepgreen}{rgb}{0,0.5,0}
+\definecolor{commentgrey}{rgb}{0.5,0.5,0.5}
+\usepackage{listings}
+
+% Python style for highlighting
+\lstset{
+language=Python,
+basicstyle=\ttm,
+otherkeywords={self},             % Add keywords here
+keywordstyle=\ttb\color{deepblue},
+emph={MyClass,__init__},          % Custom highlighting
+emphstyle=\ttb\color{deepred},    % Custom highlighting style
+stringstyle=\color{deepgreen},
+frame=tb,                         % Any extra options here
+commentstyle=\color{commentsgrey}
+}
+
+
+\title{Code Documentation}
+\author{Daniel W. Zaide}
+
+\begin{document}
+
+\maketitle
+
+\section{Overview}
+
+This code was developed to model facade envelopes with several main objectives:
+\begin{itemize}
+\item Versatility - The code should be versatile, flexible, and handle a wide range of possible physics
+\item Simplicity - The code should be simple, and defining new components and physics should be easy and clean
+\item Readable - Outside of the infrastructure, the physics components and problem setup should be readable
+\end{itemize}
+
+With that in mind, we leverage python using \lstinline{list} and \lstinline{dict}, rather than numerical arrays to allow for flexibility. We also use function handles to allow for easy definition of functions and allow for runtime adding variables classes.
+
+\section{Infrastructure}
+The goal is ultimately to solve the global system
+\begin{equation}
+\mathbf{R}(\mathbf{U}) = \sum_F \mathbf{F}(\mathbf{U}) + \sum_S \mathbf{S}(\mathbf{U}) = \mathbf{0}
+\end{equation}
+for a set of states $\mathbf{U}$, flux functions $\mathbf{F}$, and sources $\mathbf{S}$. Rather than a typical control volume approach, a simpler abstraction is used: \lstinline{blocks}. Each block has its own state variables, and the equations for these state variables are defined by fluxes (information from neighboring blocks) and sources (external information). Boundary conditions are done implicitly with a ghost cell type approach, defining blocks with states that remain constant. Wrapping the whole thing together is a \lstinline{problem} object, which is initialized with the blocks we are solving for. The boundary blocks are created, but are passed in separately to the problem object.
+
+\subsection{Blocks}
+Each typical control volume can be considered as a block. Blocks are connected to other blocks through fluxes, which act as boundary conditions. Blocks can have arbitrary state variables, and not all blocks have to have the same set of states, provided flux functions are defined that connect them together. Every block has a set of states, $U$, stored in the \lstinline{.state}. Consider a block with temperature, density, and velocity defined. The state for example, may look like
+\begin{lstlisting}
+>>> block.state
+OrderedDict([('T',20), ('rho',1.05), ('u',0.01)])
+\end{lstlisting}
+where the ordered dictionary is used to preserve the mapping used in construction of the global problem. We can access these variables using the dict, such as \lstinline{block.state['T']}. Every block defines its own equation
+\begin{equation}
+R(U) = \sum_{(F,N)} F(U,N) + \sum_S S(U) = 0
+\end{equation}
+for block $B$, its states $U \in B$, and its connected neighboring blocks, $N$ and corresponding fluxes. In this framework the \lstinline{OrderedDict} structure is used to keep track of state variables. Each block can have its own set of states, provided there is an equation (flux or source) to be solved (R cannot be empty). The form of this will be a dictionary, and the sum of the fluxes and sources will be a sum over similar dictionaries.
+
+Blocks contain additional information, such as materials or constant properties in the form of dictionaries of functions and function parameters. These are defined at initialization. This is implemented and documented in \lstinline{blocks.py}
+\subsection{Fluxes}
+Fluxes are defined through blocks which remain constant, such as external temperatures or inflow conditions. Each flux is a function of two blocks, the block they belong to, and their neighboring block. Boundary conditions are currently defined by fluxes with one block not part of the problem (constant). Each flux function is defined in \lstinline{flux.py}, and is initialized by passing in the flux function name. Fluxes are one directional (from one block to another) and are assigned to a block, using the \lstinline{addFlux} function for a block. Flux functions also contain their own parameters, a dictionary of constants they can use.
+\subsection{Sources}
+Sources are defined similar to fluxes, but are functions of a block. They are defined in \lstinline{source.py}.
+\subsection{Problem}
+This is a class that serves as a wrapper for everything, converting from the local block regions into a global matrix and back to do the solve. The problem is initialized with a list of blocks.
+\begin{lstlisting}
+def __init__(self,blocks):
+		self.b = blocks
+		self.mapping = [(i, k) for i, b in enumerate(blocks) for k in b.state.keys()]
+\end{lstlisting}
+where the mapping between blocks into a global list is done at initialization, and stored for reuse. 
+\begin{lstlisting}
+def solve(self):
+		solution = [None]*len(self.mapping)
+		for ix, (i,k) in enumerate(self.mapping):
+			solution[ix] = self.b[i].state[k]
+		solution = fsolve(self.r, solution)
+		self.update(solution)
+\end{lstlisting}
+This class is the one that needs the least work, the only places that should be modified are in \lstinline{solution = fsolve(self.r, solution)}, where \lstinline{fsolve} is a built-in function from \lstinline{scipy.optimize}.
+
+There is also an unsteady solve which solves time-dependent ODEs using \lstinline{scipy.odeint}, see the file for more information.
+
+\subsection{Geometry}
+
+Geometry is defined in text files (see data/geometry/whole-building.txt) and is implemented and described in src/base/geom.py. Given a geometry file consisting of coordinates forming quadrilateral surfaces, e.g., the snippet shown below,
+\begin{verbatim}
+{25.965603, -16.047859, 0.5}
+{25.964993, -16.047247, 4.0}
+{-25.964993, -16.047247, 4.0}
+{-25.964993, -16.047859, 0.5}
+{25.965603, 16.047859, 0.5}
+{25.964993, 16.047247, 4.0}
+{25.964993, -16.047247, 4.0}
+{25.965603, -16.047859, 0.5}
+...
+\end{verbatim}
+a quadrilateral can be expressed by its four vertices as $Q = [\mathbf{v}_0,\mathbf{v}_1,\mathbf{v}_2,\mathbf{v}_3]$. The quadrilateral lies in a plane represented by a normal vector, $\mathbf{n} = [n_x,n_y,n_z]$, which can be computed from any three points as 
+\[
+\mathbf{n} = S(\mathbf{v}_2-\mathbf{v}_0)\times (\mathbf{v}_1-\mathbf{v}_0)
+\]
+where the sign, $S = \pm 1$, of the vector is chosen to ensure the normal vector points outward, with $S = -1$ for walls and $S = 1$ for the roof. This is as a result of the vertex ordering. The normal vectors for the example file are plotted in Figure \ref{fig:normals}.
+\begin{figure}
+\centering
+\includegraphics[width=1.0\textwidth]{images/whole-building.png}
+\caption{Normal Vectors}
+\label{fig:normals}
+\end{figure}
+From the normal vectors, the orientation of the quadrilateral surface(with respect to latitude/longitude) can be written as
+\[
+\theta_{orientation} = \tan^{-1}\frac{n_y}{n_x}
+\]
+and the tilt (with respect to the x-y plane) is
+\[
+\theta_{tilt} = 90^\circ - \tan^{-1}\frac{\sqrt{n_x^2+n_y^2}}{n_z}
+\]
+
+The pitch and yaw of the quadrilateral can then be computed from the time, orientation, tilt, latitude, and longitude of the geometry.
+
+Based on the ordering of the vertices, the width and height are 
+\[ w = ||\mathbf{v}_2-\mathbf{v}_1||, \qquad h = ||\mathbf{v}_1-\mathbf{v}_0||
+\]
+and the number of modules for a given surface are 
+\[
+n_{horizontal} = floor(w/w_{module}), \qquad n_{vertical} = floor(h/h_{module})
+\]
+for some chosen module dimensions. Choosing $w_{module} = h_{module} = 0.33$ gives the following setup with, the walls being either 97x10 or 157x10, and the roof panels being 13x8.
+
+\begin{figure}
+\centering
+\includegraphics[width=1.0\textwidth]{images/whole-building-all.png}
+\caption{Geometry, with modules drawn in as squares.}
+\label{fig:normals}
+\end{figure}
+
+\end{document}
+\section{Examples}
+
+\subsection{Poisson's Equation}
+
+This is solved in the file \lstinline{poisson2D.py}. Consider the decoupled pair of Poisson's equations, $\nabla^2 \mathbf{U} = \mathbf{S}$, $\mathbf{U} = [u,v]^T$
+\begin{equation}
+\frac{\partial^2}{\partial x^2}\left[ \begin{array}{c} u \\ v \end{array}\right] + \frac{\partial^2}{\partial y^2}\left[ \begin{array}{c} u \\ v \end{array}\right]  = \left[ \begin{array}{c} (x^2+y^2)e^{xy} \\ 4(x^2+y^2+1)e^{x^2+y^2}  \end{array}\right]
+\end{equation}
+which has the exact solution $u = e^{xy}, v = e^{x^2+y^2}$. We will solve it using a finite volume method on a uniform grid of $[-1,1]\times[-1,1]$ with $\Delta x = \Delta y = \Delta$, with variables stored on the center of the grid. For a grid with $N$ interior cells, we have the cell center as $(x,y)_{i,j} = (i\Delta-\Delta/2-1, j\Delta-\Delta/2-1)$
+
+The discretization is\footnote{Technically this is not correct, as the source should be averaged over a cell, not the point value evaluated at the cell center. As the cell average is second-order accurate, there is no change in the overall accuracy of the scheme, not to mention its not really the point of this exercise.}
+\begin{equation}
+\frac{1}{\Delta^2}\sum_{neighbors} (\mathbf{U}_{neighbor}-\mathbf{U}_{i,j}) - \mathbf{S}_{i,j}
+\end{equation}
+The flux can be written as a difference for a given block,
+\begin{equation}
+\mathbf{F}(\mathbf{U},\mathbf{U}_N) = \frac{1}{\Delta^2}(\mathbf{U}_N - \mathbf{U})
+\end{equation}
+The implementation is as follows. First, import the modules as
+\begin{lstlisting}
+import src.blocks as b
+import src.flux as f
+import src.problem as p
+import src.source as s
+\end{lstlisting}
+
+First, define an extra layer of cells outside of the domain, and initialize to the exact solution. This is done at the start,
+
+\begin{lstlisting}
+d = 2./float(N)
+B = [b.Block('('+str(i*d-d/2-1)+','+str(j*d-d/2-1)+')',None,u = math.exp((i*d-d/2-1)*(j*d-d/2-1)),
+		v = math.exp((i*d-d/2-1)**2+(j*d-d/2-1)**2)) for i in range(0,N+2) for j in range(0,N+2)]
+\end{lstlisting}
+using a for loop, wher we have each cell named after its coordinates,
+\begin{lstlisting}
+'('+str(i*d-d/2-1)+','+str(j*d-d/2-1)+')'
+\end{lstlisting}we do not define a material (theres no need), so we have \lstinline{None}. Finally, we initialize with a set of key-value pairs corresponding to the exact solution
+\begin{lstlisting}
+u = math.exp((i*d-d/2-1)*(j*d-d/2-1)), v = math.exp((i*d-d/2-1)**2+(j*d-d/2-1)**2)
+\end{lstlisting}
+With the blocks initialized, the source functions can be initialized. In this case, the coordinates of the block are lazily stored in the block name. For further development of the code, coordinates may be needed, but in this case, the name is a sufficient place to hide them. Here for each block, we add a constant source, evaluated at the center. Each block has its own source added.
+\begin{lstlisting}
+for block in B:
+	(x,y) = eval(block.name)
+	block.addSource(s.Source('const',u = -(x*x+y*y)*math.exp(x*y),
+		v = -4.0*(x*x+y*y+1.0)*math.exp(x*x+y*y)))
+\end{lstlisting}
+The source, defined in \lstinline{source.py}, is 
+\begin{lstlisting}
+def const(self,b):
+	return dict([(state,self.consts[state]) for state in b.state])
+\end{lstlisting}
+which takes the option key-value pairs passed into \lstinline{consts} as constant, and returns a dictionary with the constant corresponding to each state.
+
+Next, the fluxes for each block can be added. Define geometry consisting of $\Delta$, with no materials inside the edge
+\begin{lstlisting}	
+G = {'type':'edge','d':d*d,'m':[]}
+\end{lstlisting}
+Now we can initialize the fluxes. We define a flux function called \lstinline{difference}, in \lstinline{flux.py} as
+\begin{lstlisting}
+def difference(self,b):
+	return dict((s,(self.N.state[s]-b.state[s])/self.G['d']) for s in b.state)
+\end{lstlisting}
+This function returns a dictionary, by summing over each state, subtracting, and doing the difference. If this were a real CFD code, for each edge, we would only define a flux once. In this example, each flux is defined twice, once for each direction. We create a list of interior blocks which we will actually solve on, ignoring the boundary blocks. For each neighboring block, we create a flux based on that block, connecting the two blocks. We then initialize the interior block's solution to zero. The boundary conditions in this case are implicit, in the blocks on the edge of the domain, determined by the blocks in the exterior.
+\begin{lstlisting}
+n = N+2
+for i in range(1,n-1):
+	for j in range(1,n-1):
+		for k in [(i-1)*n+j, i*n+j-1,(i+1)*n+j, i*n+j+1]:
+			B[i*n+j].addFlux(f.Flux(B[k],'difference',G))
+		B[i*n+j].state['u'] = 0.
+		B[i*n+j].state['v'] = 0.
+interiorBlocks = [B[i*n+j] for i in range(1,n-1) for j in range(1,n-1)]
+\end{lstlisting}
+Finally, with the blocks created, the problem is easily created and solved with
+\begin{lstlisting}
+P = p.Problem(interiorBlocks)
+P.solve()
+\end{lstlisting}
+The rest of the file does error analysis, and computes the accuracy of the scheme.
+
+\end{document}

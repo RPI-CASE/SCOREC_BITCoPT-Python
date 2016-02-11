@@ -1,6 +1,11 @@
 *.pyc
 *.vtk
-*.aux
-*.log
+
 *~
 Results/*
+
+doc/*pdf
+doc/*.gz
+doc/*.aux
+doc/*.log
+doc/*.out

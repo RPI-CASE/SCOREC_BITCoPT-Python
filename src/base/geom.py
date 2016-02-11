@@ -13,7 +13,7 @@ object itself, and standard get/set/len type operations.
 Quantities that are used often are stored, and quantities that
 are not required often, are calculations for now.
 
-Requires the shapely library to function properly
+Requires the SHAPELY library to handle facades shading other facades
 
 Each Geometry Object has:
   (.n) normal vector, as an np.array
@@ -45,6 +45,8 @@ Each GeometrySet Object has:
        for each geometry object
   (.name) a name
   (.dataNames) a list of data stored in the geometry
+
+There is also a plot function, to plot geometrySets, see below
 
 There is also a SimpleGeometry object,
 which only has orientation and tilt, and really acts
