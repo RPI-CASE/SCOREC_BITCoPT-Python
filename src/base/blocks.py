@@ -3,7 +3,7 @@ blocks.py contains the Block Class
 
 Each Block has:
   (.name) string identifying the block's name (or ID)
-c  (.P) parameters, a dictionary of parameters or functions
+  (.P) parameters, a dictionary of parameters or functions
      which depend on the states inside the block
      These are common and to be used in fluxes, sources, etc
      (optional)
