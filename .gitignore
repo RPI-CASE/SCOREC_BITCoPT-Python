@@ -3,6 +3,7 @@
 
 *~
 Results/*
+BITCoPT.egg-info/*
 
 doc/*pdf
 doc/*.gz
