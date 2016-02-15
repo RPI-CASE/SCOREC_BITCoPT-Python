@@ -113,5 +113,5 @@ class Block(object):
   allows for using print direction on an object
   """ 
   def __repr__(self):
-    return "block named " +self.name+" with "+str(len(self.state))+"\n"  \
-      + ",".join([s + '=' + str(self[s]) for s in self.state])
+    return "block " +self.name+" has "+str(len(self.state))+" states\n"  \
+      + ", ".join([s + ' = ' + str(self[s]) for s in self.state]) + "\n"

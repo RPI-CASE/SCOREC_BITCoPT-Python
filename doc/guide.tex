@@ -108,7 +108,15 @@ a quadrilateral can be expressed by its four vertices as $Q = [\mathbf{v}_0,\mat
 \[
 \mathbf{n} = S(\mathbf{v}_2-\mathbf{v}_0)\times (\mathbf{v}_1-\mathbf{v}_0)
 \]
-where the sign, $S = \pm 1$, of the vector is chosen to ensure the normal vector points outward, with $S = -1$ for walls and $S = 1$ for the roof. This is as a result of the vertex ordering. The normal vectors for the example file are plotted in Figure \ref{fig:normals}.
+where the sign, $S = \pm 1$, of the vector is chosen to ensure the normal vector points outward, with $S = -1$ for walls and $S = 1$ for the roof. This is as a result of the vertex ordering. The vertex ordering is shown in figure \ref{fig:ordering}
+
+\begin{figure}
+\centering
+\includegraphics[width=0.75\textwidth]{images/geomdefine2.png}
+\caption{Vertex Ordering}
+\label{fig:ordering}
+\end{figure}
+The normal vectors for the example file are plotted in Figure \ref{fig:normals}.
 \begin{figure}
 \centering
 \includegraphics[width=1.0\textwidth]{images/whole-building.png}
@@ -141,87 +149,5 @@ for some chosen module dimensions. Choosing $w_{module} = h_{module} = 0.33$ giv
 \caption{Geometry, with modules drawn in as squares.}
 \label{fig:normals}
 \end{figure}
-
-\end{document}
-\section{Examples}
-
-\subsection{Poisson's Equation}
-
-This is solved in the file \lstinline{poisson2D.py}. Consider the decoupled pair of Poisson's equations, $\nabla^2 \mathbf{U} = \mathbf{S}$, $\mathbf{U} = [u,v]^T$
-\begin{equation}
-\frac{\partial^2}{\partial x^2}\left[ \begin{array}{c} u \\ v \end{array}\right] + \frac{\partial^2}{\partial y^2}\left[ \begin{array}{c} u \\ v \end{array}\right]  = \left[ \begin{array}{c} (x^2+y^2)e^{xy} \\ 4(x^2+y^2+1)e^{x^2+y^2}  \end{array}\right]
-\end{equation}
-which has the exact solution $u = e^{xy}, v = e^{x^2+y^2}$. We will solve it using a finite volume method on a uniform grid of $[-1,1]\times[-1,1]$ with $\Delta x = \Delta y = \Delta$, with variables stored on the center of the grid. For a grid with $N$ interior cells, we have the cell center as $(x,y)_{i,j} = (i\Delta-\Delta/2-1, j\Delta-\Delta/2-1)$
-
-The discretization is\footnote{Technically this is not correct, as the source should be averaged over a cell, not the point value evaluated at the cell center. As the cell average is second-order accurate, there is no change in the overall accuracy of the scheme, not to mention its not really the point of this exercise.}
-\begin{equation}
-\frac{1}{\Delta^2}\sum_{neighbors} (\mathbf{U}_{neighbor}-\mathbf{U}_{i,j}) - \mathbf{S}_{i,j}
-\end{equation}
-The flux can be written as a difference for a given block,
-\begin{equation}
-\mathbf{F}(\mathbf{U},\mathbf{U}_N) = \frac{1}{\Delta^2}(\mathbf{U}_N - \mathbf{U})
-\end{equation}
-The implementation is as follows. First, import the modules as
-\begin{lstlisting}
-import src.blocks as b
-import src.flux as f
-import src.problem as p
-import src.source as s
-\end{lstlisting}
-
-First, define an extra layer of cells outside of the domain, and initialize to the exact solution. This is done at the start,
-
-\begin{lstlisting}
-d = 2./float(N)
-B = [b.Block('('+str(i*d-d/2-1)+','+str(j*d-d/2-1)+')',None,u = math.exp((i*d-d/2-1)*(j*d-d/2-1)),
-		v = math.exp((i*d-d/2-1)**2+(j*d-d/2-1)**2)) for i in range(0,N+2) for j in range(0,N+2)]
-\end{lstlisting}
-using a for loop, wher we have each cell named after its coordinates,
-\begin{lstlisting}
-'('+str(i*d-d/2-1)+','+str(j*d-d/2-1)+')'
-\end{lstlisting}we do not define a material (theres no need), so we have \lstinline{None}. Finally, we initialize with a set of key-value pairs corresponding to the exact solution
-\begin{lstlisting}
-u = math.exp((i*d-d/2-1)*(j*d-d/2-1)), v = math.exp((i*d-d/2-1)**2+(j*d-d/2-1)**2)
-\end{lstlisting}
-With the blocks initialized, the source functions can be initialized. In this case, the coordinates of the block are lazily stored in the block name. For further development of the code, coordinates may be needed, but in this case, the name is a sufficient place to hide them. Here for each block, we add a constant source, evaluated at the center. Each block has its own source added.
-\begin{lstlisting}
-for block in B:
-	(x,y) = eval(block.name)
-	block.addSource(s.Source('const',u = -(x*x+y*y)*math.exp(x*y),
-		v = -4.0*(x*x+y*y+1.0)*math.exp(x*x+y*y)))
-\end{lstlisting}
-The source, defined in \lstinline{source.py}, is 
-\begin{lstlisting}
-def const(self,b):
-	return dict([(state,self.consts[state]) for state in b.state])
-\end{lstlisting}
-which takes the option key-value pairs passed into \lstinline{consts} as constant, and returns a dictionary with the constant corresponding to each state.
-
-Next, the fluxes for each block can be added. Define geometry consisting of $\Delta$, with no materials inside the edge
-\begin{lstlisting}	
-G = {'type':'edge','d':d*d,'m':[]}
-\end{lstlisting}
-Now we can initialize the fluxes. We define a flux function called \lstinline{difference}, in \lstinline{flux.py} as
-\begin{lstlisting}
-def difference(self,b):
-	return dict((s,(self.N.state[s]-b.state[s])/self.G['d']) for s in b.state)
-\end{lstlisting}
-This function returns a dictionary, by summing over each state, subtracting, and doing the difference. If this were a real CFD code, for each edge, we would only define a flux once. In this example, each flux is defined twice, once for each direction. We create a list of interior blocks which we will actually solve on, ignoring the boundary blocks. For each neighboring block, we create a flux based on that block, connecting the two blocks. We then initialize the interior block's solution to zero. The boundary conditions in this case are implicit, in the blocks on the edge of the domain, determined by the blocks in the exterior.
-\begin{lstlisting}
-n = N+2
-for i in range(1,n-1):
-	for j in range(1,n-1):
-		for k in [(i-1)*n+j, i*n+j-1,(i+1)*n+j, i*n+j+1]:
-			B[i*n+j].addFlux(f.Flux(B[k],'difference',G))
-		B[i*n+j].state['u'] = 0.
-		B[i*n+j].state['v'] = 0.
-interiorBlocks = [B[i*n+j] for i in range(1,n-1) for j in range(1,n-1)]
-\end{lstlisting}
-Finally, with the blocks created, the problem is easily created and solved with
-\begin{lstlisting}
-P = p.Problem(interiorBlocks)
-P.solve()
-\end{lstlisting}
-The rest of the file does error analysis, and computes the accuracy of the scheme.
 
 \end{document}

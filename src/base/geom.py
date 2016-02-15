@@ -89,6 +89,8 @@ class SimpleGeometry(object):
     self.R = np.transpose(self.Rx*self.Rz)
     self.Rsolar = np.transpose(self.Rx)*self.Rz
 
+    if self.tilt < -1e10:
+      print "warning, tilt is less than 0 for simple geometry object\n"
   def __repr__(self):
     return 'SimpleGeometry Object with orient '+str(self.orient) \
       +' and tilt '+str(self.tilt)
@@ -167,7 +169,15 @@ class Geometry(object):
       self.poly = Polygon([(c[:,0],c[:,2]) for c in 
         [np.asmatrix(self[i])*self.R
         for i in range(len(self))]])
+    else:
+      print "\n!!! Warning: cannot compute shading \
+      without shapely package!!! \n \
+      https://pypi.python.org/pypi/Shapely\n"
 
+    if self.tilt < -1e10:
+      print "warning, tilt is less than 0 for geometry with "
+      print self
+      print "\n"
   """
               overloading of container functions
 

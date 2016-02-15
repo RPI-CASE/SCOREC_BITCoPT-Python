@@ -71,8 +71,10 @@ def poisson2D(N):
   # interior sources, -f['u'] and -f['v']
   for block in B:
     (x,y) = (block.p['x'],block.p['y'])
-    block.addSource(s.Source(s.constant,{'u':-(x*x+y*y)*math.exp(x*y),
-      'v':-4.0*(x*x+y*y+1.0)*math.exp(x*x+y*y)},'constant'))
+    block.addSource(s.Source(s.constant, # standard function defined in source.py
+      {'u':-(x*x+y*y)*math.exp(x*y),
+      'v':-4.0*(x*x+y*y+1.0)*math.exp(x*x+y*y)}, # parameters
+      'constant')) # name
 
   # Flux geometry 
   P = {'d':d*d} # divide by delta x^2 in the end

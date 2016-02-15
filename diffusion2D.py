@@ -2,23 +2,33 @@
 Solve (u_xx + u_yy)*nu_u = u_t on a uniform grid
 and (v_xx + v_yy)*nu_v = v_t on a uniform grid
 
-with known solution
-
+with exact solution 
 u, v = exp(-nu*pi^2*(a^2+b^2)t)*sin(a*pi*x)*sin(b*pi*y)
-with initial condition
-u, v = sin(a*pi*x)*sin(b*pi*y)
-for integer choices a and b
-this allows for a lot of flexibility in how things want to be defined
 
-lets pick u_a = 1, u_b = 1, nu_u = 1
-and v_a = 4, v_b = 2, nu_v = 0.5
-and tf = 1
+for initial condition
+u, v = sin(a*pi*x)*sin(b*pi*y)
+
+for integer choices a and b
+this allows for a lot of flexibility 
+in how things want to be defined
+
+lets pick 
+u_a = 1, u_b = 1, nu_u = 1
+v_a = 4, v_b = 2, nu_v = 0.5
+tf = 1, the final time
 
 These are independent of eachother, but are sufficient to check the
 unsteady solver is working
 
 The discretization is the same as in poisson2D, with an additional
 du/dt = R(U), handled by odeint.
+
+the main difference is that the time of a block (.t) is used in the 
+boundary blocks, which are defined by a single source returning a dictionary
+
+boundary block state = S(boundary block)
+
+This is very much a work in progress and not actively used, but it could be...
 
 The code does a rough accuracy estimation,
 and outputs the accuracy for both u and v. The accuracy should be around 2 if 
@@ -53,8 +63,8 @@ def time(B,P):
   return {'u':u,'v':v}
 
 """ Fluxes defined here """
-def difference(B,N,G):
-  return dict((s,(N[s]-B[s])/G['d']) for s in B.state)
+def difference(B,N,P):
+  return dict((s,(N[s]-B[s])/P['d']) for s in B.state)
 
 def diffusion2D(N):
   d = 2./float(N) # spacing, delta 
@@ -67,8 +77,9 @@ def diffusion2D(N):
       # block has a simple name
       name = '('+str(i)+','+str(j)+')'
       B.append(b.Block(name,
+        # initialize to exact solution
         {'u':math.sin(u_a*math.pi*x)*math.sin(u_b*math.pi*y),
-         'v':math.sin(v_a*math.pi*x)*math.sin(v_b*math.pi*y)}, # initialize to exact solution
+         'v':math.sin(v_a*math.pi*x)*math.sin(v_b*math.pi*y)}, 
          None, # no parameter functions
          {'x':x,'y':y})) 
 
@@ -94,10 +105,14 @@ def diffusion2D(N):
     B[k].addSource(s.Source(time,None,B[k].name))
     boundaryBlocks.append(B[k])
 
-  # solve the problem on the interior blocks
+  # solve the problem on the interior blocks,
+  # pass in the boundary blocks so they can be updated
+  # at each needed time.
+  # solve the unstead problem at the following timesteps
   P = p.Problem(interiorBlocks,boundaryBlocks)
   P.solveUnst(np.linspace(0,tf,10))
   
+  # calculate the error for accuracy checking
   Eu = 0
   Ev = 0
   for bb in interiorBlocks:
