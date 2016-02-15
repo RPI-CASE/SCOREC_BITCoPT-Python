@@ -16,6 +16,7 @@ Or manually installed with
 pip install pytz
 
 pip install solar
+* Requires pysolar 0.6 for Python 2.X - https://github.com/pingswept/pysolar/releases/tag/0.6
 
 pip install shapely
 
