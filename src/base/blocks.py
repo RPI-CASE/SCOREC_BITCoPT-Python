@@ -16,7 +16,7 @@ Each Block has:
      as the functions are meant to be materials, and things of that
      nature, while parameters are any constants associated with the block,
      such as coordinates
-     
+
   (.state) physical state
   (.F) list of fluxes, which return a dictionary
   (.S) list of sources, which return a dictionary
@@ -120,8 +120,13 @@ class Block(object):
   input(s):  None
   output(s): str representation of the object. 
 
-  allows for using print direction on an object
+  allows for using print on an object
   """ 
   def __repr__(self):
-    return "block " +self.name+" has "+str(len(self.state))+" states\n"  \
-      + ", ".join([s + ' = ' + str(self[s]) for s in self.state]) + "\n"
+    n = len(self.state)
+    if n == 1:
+      return "block " +self.name+" has "+str(n)+" state\n"  \
+        + ", ".join([s + ' = ' + str(self[s]) for s in self.state]) + "\n"
+    else:
+      return "block " +self.name+" has "+str(n)+" states\n"  \
+        + ", ".join([s + ' = ' + str(self[s]) for s in self.state]) + "\n"
