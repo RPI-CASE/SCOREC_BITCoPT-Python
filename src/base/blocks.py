@@ -3,10 +3,20 @@ blocks.py contains the Block Class
 
 Each Block has:
   (.name) string identifying the block's name (or ID)
-  (.P) parameters, a dictionary of parameters or functions
+  (.P) parameters, a dictionary of parameters functions
      which depend on the states inside the block
      These are common and to be used in fluxes, sources, etc
      (optional)
+  (.p) parameters, a dictionary of parameters
+     which depend on the states inside the block
+     These are common and to be used in fluxes, sources, etc
+     (optional)
+
+     Parameter Functions and parameters are kept seperate
+     as the functions are meant to be materials, and things of that
+     nature, while parameters are any constants associated with the block,
+     such as coordinates
+     
   (.state) physical state
   (.F) list of fluxes, which return a dictionary
   (.S) list of sources, which return a dictionary
