@@ -7,22 +7,6 @@ General documentation is in doc/guide.tex. There is other documentation in the d
 ## Dependencies
 There are three main dependencies that may need to be installed: pytz for timezones, solar for solar calculations, and shapely for geometries.
 
-### Automatic Install
-Update distribute libraries with (may require admin):
-```
-pip install --upgrade pip
-```
-```
-pip install --upgrade distribute
-```
-```
-pip install --upgrade setuptools
-```
-Dependencies can be obtained using:
-```
-  python setup.py develop
-```
-
 ### Manual Install
 This method of installation has been more successful.
 
@@ -42,6 +26,22 @@ python setup.py install
 Install Shapely (https://pypi.python.org/pypi/Shapely):
 ```
 pip install shapely
+```
+
+### Automatic Install
+Update distribute libraries with (may require admin):
+```
+pip install --upgrade pip
+```
+```
+pip install --upgrade distribute
+```
+```
+pip install --upgrade setuptools
+```
+Dependencies can be obtained using:
+```
+  python setup.py develop
 ```
 
 ## Tests
