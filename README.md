@@ -25,10 +25,12 @@ python setup.py install
 ```
 
 Install Shapely (https://pypi.python.org/pypi/Shapely):
+
 For Mac OSX and Linux:
 ```
 pip install shapely
 ```
+
 For Windows:
 * Go to http://www.lfd.uci.edu/~gohlke/pythonlibs/#shapely
 * Search for shapely 
@@ -55,7 +57,8 @@ pip install --upgrade distribute
 ```
 pip install --upgrade setuptools
 ```
-Dependencies can be obtained using:
+
+Dependencies can be installed using:
 ```
   python setup.py develop
 ```
