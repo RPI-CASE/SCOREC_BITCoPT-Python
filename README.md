@@ -18,7 +18,8 @@ pip install pytz
 Install Pysolar (https://github.com/pingswept/pysolar), legacy 0.6 for Python 2.x:
 * Download source code from https://github.com/pingswept/pysolar/releases/tag/0.6
 * Unzip and move folder to accessible location
-* Within CMD or Command Line type:
+* Navigate CMD/Console into the folder
+* Within CMD/Console type:
 ```
 python setup.py install
 ```
@@ -32,7 +33,7 @@ For Windows:
 * Go to http://www.lfd.uci.edu/~gohlke/pythonlibs/#shapely
 * Search for shapely 
 * Download the correct cp27 *.whl file, 32 or 64 bit
-* Navigate to download folder and type "cmd" in the path/url bar OR open CMD and navigate to downloads folder
+* Navigate to download folder and type "cmd" in the path/url bar at the top OR open CMD and navigate to downloads folder
 * Type into CMD:
 ```
 pip install [name of shapely file].whl
