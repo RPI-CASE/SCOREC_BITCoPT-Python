@@ -61,6 +61,7 @@ coordinates are not needed
 
 import numpy as np
 import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
 from sys import exit
 try:
   from shapely.geometry import Polygon
@@ -134,7 +135,7 @@ class Geometry(object):
     self.orient = np.pi/2.+np.arctan2(self.n[1],self.n[0])
     self.tilt = np.pi/2.- np.arctan2(np.sqrt(self.n[0]*self.n[0]
       +self.n[1]*self.n[1]),self.n[2])
-    if self.orient > np.pi:
+    if self.orient > 0.999999999*np.pi:
       self.orient -= 2.*np.pi
     """
     This is part where directions are defined
@@ -154,8 +155,9 @@ class Geometry(object):
     elif(self.tilt > 2.*np.pi/7.):
       self.dir = 'roof'
     else:
-      exit('facade with tilt of '+self.tilt+' and '+self.orient \
-        + ' is invalid')
+      self.dir = 'unknown'
+      print 'warning: facade with tilt of '+str(self.tilt)+' and orient of '+str(self.orient) \
+        + ' has unknown direction'
 
     self.Rx = np.matrix([[1,0,0],[0,np.cos(self.tilt), -np.sin(self.tilt)],
       [0,np.sin(self.tilt), np.cos(self.tilt)]],float)
