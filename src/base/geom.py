@@ -106,11 +106,14 @@ class Geometry(object):
   output(s):  None
   """
 
-  def __init__(self,coords):
+  def __init__(self,coords,wall_coords = None):
     if(len(coords) != 4):
       exit("surface with more than 4 coordinates.\n \
         only quadrilateral facades supported for now\n")
-
+    if wall_coords:
+    if(len(wall_coords) != 4):
+      exit("wall with more than 4 coordinates.\n \
+        only quadrilateral facades supported for now\n")      
     self.coords = coords
     self._setGeometricData()
 
