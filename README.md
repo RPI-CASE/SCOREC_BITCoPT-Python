@@ -46,6 +46,11 @@ Install joblib (https://pypi.python.org/pypi/joblib):
 pip install joblib
 ```
 
+Install numdifftools (https://pypi.python.org/pypi/Numdifftools):
+```
+pip install numdifftools
+```
+
 ### Automatic Install
 Update distribute libraries with (may require admin):
 ```
