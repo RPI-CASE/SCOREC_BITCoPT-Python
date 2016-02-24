@@ -50,6 +50,87 @@ def readFile(filename,name,useSunlit = True):
   return geometrySet
 
 """
+readNewFile:    reads from the new file format,
+                with much more information, including walls
+
+                each line is  a single facade, see data/geometry/whole-building.txt
+
+input(s):       filename, geometry name
+output(s):      GeometrySet object
+"""
+def readNewFile(filename,name,useSunlit = True):
+  geometrySet = g.GeometrySet('name')
+
+  f = open(filename,'r')
+  lines = f.readlines()
+  f.close()
+  index = 0
+  data = {}
+  # loop through all the data
+  while index < len(lines):
+    header = lines[index][0:lines[index].find(',')]
+    # if the header is already found (main line) 
+    # then add another entry, otherwise initialize it
+    if header in data:
+      data[header].append([])
+    else:
+      data[header] = [[]]
+    # loop until you hit an empty line, denoting a new entry
+    while index < len(lines) and lines[index].strip():
+      # remove the endline and initial tabs that are present
+      data[header][-1].append(lines[index].rstrip('\n').lstrip('\t'))
+      index = index+1
+    # skip the blank line
+    index = index+1
+
+  # we now have all the data in a nice header
+  # first lets process the geometry info
+  # this is kind of crude, but seems to work
+  geometry_list = data['GlobalGeometryRules'][0]
+  for item in geometry_list:
+    if ( 'Starting Vertex Position' in item):
+      starting_vertex_position = item[0:item.find(',')]
+    if ( 'Vertex Entry Direction' in item):
+      vertex_entry_direction = item[0:item.find(',')]
+  if starting_vertex_position == 'UpperLeftCorner':
+    coord_offset = 2 # my starting corner is bottom right
+
+  if vertex_entry_direction == 'Counterclockwise':
+    pass # this is fine, its the same orientation I use
+
+  building_surface_list = data['BuildingSurface:Detailed']
+  walls = {}
+  for surface in building_surface_list:
+    name = surface[1].split(',')[0]
+    surface_type = surface[2].split(',')[0]
+    # ignore all surfaces not named "Wall"
+    if surface_type != 'Wall':
+      continue
+    coords = [[float(a[:-2]) for a in c.split(' ')] for c in surface[-4:]]
+    coords = [coords[(i + coord_offset) % 4] for i in range(len(coords))]
+    coords = [np.array(coord,float) for coord in coords]
+    geom = g.Geometry(coords,'wall')
+    walls[name] = geom
+    geometrySet.append(geom)
+
+  window_list = data['FenestrationSurface:Detailed']
+  for surface in window_list:
+    name = surface[1].split(',')[0]
+    surface_type = surface[2].split(',')[0]
+    wall_name = surface[4].split(',')[0]
+    coords = [[float(a[:-2]) for a in c.split(' ')] for c in surface[-4:]]
+    coords = [coords[(i + coord_offset) % 4] for i in range(len(coords))]
+    coords = [np.array(coord,float) for coord in coords]
+    geom = g.Geometry(coords)
+
+    if wall_name in walls:
+      geom.setWall(walls[wall_name])
+    else:
+      geom = g.Geometry(coords)
+    geometrySet.append(geom)
+
+  return geometrySet
+"""
 writeVTKFile:   writes a paraview VTK file of the data stored in the geometry
 
 input(s):       geometrySet:

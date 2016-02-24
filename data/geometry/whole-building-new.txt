@@ -1,0 +1,165 @@
+GlobalGeometryRules,
+	UpperLeftCorner,  !- Starting Vertex Position 
+	Counterclockwise,  !- Vertex Entry Direction 
+	Absolute,  !- Coordinate System 
+	World;  !- Daylighting Reference Point Coordinate System 
+
+BuildingSurface:Detailed,
+	ep_ceiling 0,
+	Roof,
+	Roof_ASHRAE_90.1-2007_Climate_Zone_1_Roof_IP.R-15,
+	DIVA Perimeter Zone,
+	Outdoors,
+	 ,
+	SunExposed,
+	WindExposed,
+	Autocalculate,
+	4,
+	-13.372912775868, 9.000000000000, 4.000000000000,
+	-13.372912775868, -22.582874970426, 4.000000000000,
+	9.000000000000, -22.582874970426, 4.000000000000,
+	9.000000000000, 9.000000000000, 4.000000000000;
+ 
+BuildingSurface:Detailed,
+	ep_floor 0,
+	Floor,
+	Floor_CastConcrete_IP.U0.29,
+	DIVA Perimeter Zone,
+	Ground,
+	 ,
+	NoSun,
+	NoWind,
+	Autocalculate,
+	4,
+	9.000000000000, 9.000000000000, 0.000000000000,
+	9.000000000000, -22.582874970426, 0.000000000000,
+	-13.372912775868, -22.582874970426, 0.000000000000,
+	-13.372912775868, 9.000000000000, 0.000000000000;
+ 
+BuildingSurface:Detailed,
+	ep_wall 0,
+	Wall,
+	Wall_ASHRAE_90.1-2010_Climate_Zone_3_Ext_Wall_Steel-Framed_IP.R-13,
+	DIVA Perimeter Zone,
+	Outdoors,
+	 ,
+	SunExposed,
+	WindExposed,
+	Autocalculate,
+	4,
+	9.000000000000, -22.582874970426, 4.000000000000,
+	9.000000000000, -22.582874970426, 0.000000000000,
+	-13.372912775868, -22.582874970426, 0.000000000000,
+	-13.372912775868, -22.582874970426, 4.000000000000;
+ 
+FenestrationSurface:Detailed,
+	ep_window 2,	!- Name
+	Window, !- Surface Type
+	ep_window Unshaded Construction, !- Construction Name
+	ep_wall 0,	!- Building Surface Name
+	 ,	!- Boundary Condition Object
+	Autocalculate,	!- View Factor to Ground
+	 ,	!- Shading Control Name
+	 ,	!- Frame and Divider Name
+	1.0,	!- Multiplier
+	4,	!- Number of Vertices
+	8.440677180603, -22.582874970426, 3.900000000000,
+	8.440677180603, -22.582874970426, 0.100000000000,
+	-12.813589956471, -22.582874970426, 0.100000000000,
+	-12.813589956471, -22.582874970426, 3.900000000000;
+ 
+BuildingSurface:Detailed,
+	ep_wall 1,
+	Wall,
+	Wall_ASHRAE_90.1-2010_Climate_Zone_3_Ext_Wall_Steel-Framed_IP.R-13,
+	DIVA Perimeter Zone,
+	Outdoors,
+	 ,
+	SunExposed,
+	WindExposed,
+	Autocalculate,
+	4,
+	-13.372912775868, -22.582874970426, 4.000000000000,
+	-13.372912775868, -22.582874970426, 0.000000000000,
+	-13.372912775868, 9.000000000000, 0.000000000000,
+	-13.372912775868, 9.000000000000, 4.000000000000;
+ 
+FenestrationSurface:Detailed,
+	ep_window 1,	!- Name
+	Window, !- Surface Type
+	ep_window Unshaded Construction, !- Construction Name
+	ep_wall 1,	!- Building Surface Name
+	 ,	!- Boundary Condition Object
+	Autocalculate,	!- View Factor to Ground
+	 ,	!- Shading Control Name
+	 ,	!- Frame and Divider Name
+	1.0,	!- Multiplier
+	4,	!- Number of Vertices
+	-13.372912775868, -19.424587473383, 3.600000000000,
+	-13.372912775868, -19.424587473383, 0.400000000000,
+	-13.372912775868, 5.841712502957, 0.400000000000,
+	-13.372912775868, 5.841712502957, 3.600000000000;
+ 
+BuildingSurface:Detailed,
+	ep_wall 2,
+	Wall,
+	Wall_ASHRAE_90.1-2010_Climate_Zone_3_Ext_Wall_Steel-Framed_IP.R-13,
+	DIVA Perimeter Zone,
+	Outdoors,
+	 ,
+	SunExposed,
+	WindExposed,
+	Autocalculate,
+	4,
+	-13.372912775868, 9.000000000000, 4.000000000000,
+	-13.372912775868, 9.000000000000, 0.000000000000,
+	9.000000000000, 9.000000000000, 0.000000000000,
+	9.000000000000, 9.000000000000, 4.000000000000;
+ 
+FenestrationSurface:Detailed,
+	ep_window 0,	!- Name
+	Window, !- Surface Type
+	ep_window Unshaded Construction, !- Construction Name
+	ep_wall 2,	!- Building Surface Name
+	 ,	!- Boundary Condition Object
+	Autocalculate,	!- View Factor to Ground
+	 ,	!- Shading Control Name
+	 ,	!- Frame and Divider Name
+	1.0,	!- Multiplier
+	4,	!- Number of Vertices
+	-8.898330220694, 9.000000000000, 3.200000000000,
+	-8.898330220694, 9.000000000000, 0.800000000000,
+	4.525417444826, 9.000000000000, 0.800000000000,
+	4.525417444826, 9.000000000000, 3.200000000000;
+ 
+BuildingSurface:Detailed,
+	ep_wall 3,
+	Wall,
+	Wall_ASHRAE_90.1-2010_Climate_Zone_3_Ext_Wall_Steel-Framed_IP.R-13,
+	DIVA Perimeter Zone,
+	Outdoors,
+	 ,
+	SunExposed,
+	WindExposed,
+	Autocalculate,
+	4,
+	9.000000000000, -22.582874970426, 4.000000000000,
+	9.000000000000, -22.582874970426, 0.000000000000,
+	9.000000000000, 9.000000000000, 0.000000000000,
+	9.000000000000, 9.000000000000, 4.000000000000;
+ 
+FenestrationSurface:Detailed,
+	ep_window 3,	!- Name
+	Window, !- Surface Type
+	ep_window Unshaded Construction, !- Construction Name
+	ep_wall 3,	!- Building Surface Name
+	 ,	!- Boundary Condition Object
+	Autocalculate,	!- View Factor to Ground
+	 ,	!- Shading Control Name
+	 ,	!- Frame and Divider Name
+	1.0,	!- Multiplier
+	4,	!- Number of Vertices
+	9.000000000000, -20.214159347644, 3.700000000000,
+	9.000000000000, -20.214159347644, 0.300000000000,
+	9.000000000000, 6.631284377218, 0.300000000000,
+	9.000000000000, 6.631284377218, 3.700000000000;
