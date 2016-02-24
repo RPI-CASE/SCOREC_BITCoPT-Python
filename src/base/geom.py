@@ -20,6 +20,7 @@ Each Geometry Object has:
   (.orient) orientation angle, in radians
   (.tilt) tilt angle, in radians
   (.coords) coordinates
+  (.wall) a geometry corresponding to the wall (optional, use setWall)
   (._index) a number representing its location in the GeometrySet
             let the GeometrySet deal with this, dont access directly
   (.nX) the number of blocks in the X direction
@@ -29,6 +30,7 @@ Each Geometry Object has:
   (.R) rotation matrix, transposed for ease of use,
        transpose(R(tilt)*R(orient))
   (.poly) Polygon Representation of the surface in x-z plane
+  (.facadeType) 'wall' or 'window'
 
 Each GeometrySet Object is a collection of Geometry Objects,
 in an easily accessible way, allowing for queries
@@ -102,26 +104,44 @@ class Geometry(object):
 
   __init__:   Object Constructor
 
-  input(s):   coordinates
+  input(s):   coords, list of 4 numpy arrays of coordinates (x,y,z)
+              facadeType, 'wall' or 'window'
+              wall_coords, list of coords for corresponding wall,
+                this attaches the wall to the window for shading purposes
   output(s):  None
   """
 
-  def __init__(self,coords,wall_coords = None):
+  def __init__(self,coords,facadeType = 'window'):
     if(len(coords) != 4):
       exit("surface with more than 4 coordinates.\n \
         only quadrilateral facades supported for now\n")
-    if wall_coords:
-    if(len(wall_coords) != 4):
-      exit("wall with more than 4 coordinates.\n \
-        only quadrilateral facades supported for now\n")      
+    if(coords[1][2] < coords[0][2]):
+      print "warning, second coordinate is below first coordinate in z-plane, \
+      coordinates may be inputted in the wrong order"
+    if (not (facadeType is 'window' or facadeType is 'wall')):
+      exit("invalid facadeType in geometry\n")
+    self.wall = None
     self.coords = coords
     self._setGeometricData()
-
+    self.facadeType = facadeType 
     # default information
     self._index = 0
     self.data = {}
     self.nX = 1
     self.nY = 1
+  """ 
+  setWall:  Attaches a geometry (wall) to a window
+
+  input(s):   Geometry object
+  output(s):  None
+  """   
+  def setWall(self,wall):
+    self.wall = wall
+    # check if normals agree
+    if (np.linalg.norm(wall.n-self.n) > 1e-6):
+      print "warning: window and wall normals do not agree"
+    if (wall.height()*wall.width() < self.height()*self.width()):
+      exit("invalid wall: wall is smaller than window\n")
   """ 
   _setGeometricData:  Internal function used if coordinates have changed,
                       or when initializing
@@ -134,10 +154,11 @@ class Geometry(object):
     self.n = np.cross(self.coords[2]-self.coords[0],
       self.coords[1]-self.coords[0])
     self.n = self.n/np.linalg.norm(self.n)
- 
+
     self.orient = np.pi/2.+np.arctan2(self.n[1],self.n[0])
     self.tilt = np.pi/2.- np.arctan2(np.sqrt(self.n[0]*self.n[0]
       +self.n[1]*self.n[1]),self.n[2])
+
     if self.orient > 0.999999999*np.pi:
       self.orient -= 2.*np.pi
     """
@@ -205,7 +226,7 @@ class Geometry(object):
       + str(self.width()) + " in direction "+self.dir
 
   """
-  height:     computes height and width of block
+  height:     computes height and width of facade
   width:
   
   input(s):   None
@@ -216,6 +237,7 @@ class Geometry(object):
 
   def width(self):
     return np.linalg.norm(self.coords[2]-self.coords[1])
+
 
   """
   rotate:     rotates all coordinates about an axis
