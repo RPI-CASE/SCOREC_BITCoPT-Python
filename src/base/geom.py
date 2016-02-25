@@ -20,7 +20,8 @@ Each Geometry Object has:
   (.orient) orientation angle, in radians
   (.tilt) tilt angle, in radians
   (.coords) coordinates
-  (.wall) a geometry corresponding to the wall (optional, use setWall)
+  (.partner) a geometry corresponding to the partner (wall or window) 
+    (optional, use setWall)
   (._index) a number representing its location in the GeometrySet
             let the GeometrySet deal with this, dont access directly
   (.nX) the number of blocks in the X direction
@@ -118,9 +119,9 @@ class Geometry(object):
     if(coords[1][2] < coords[0][2]):
       print "warning, second coordinate is below first coordinate in z-plane, \
       coordinates may be inputted in the wrong order"
-    if (not (facadeType is 'window' or facadeType is 'wall')):
+    if (not (facadeType == 'window' or facadeType == 'wall')):
       exit("invalid facadeType in geometry\n")
-    self.wall = None
+    self.partner = None
     self.coords = coords
     self._setGeometricData()
     self.facadeType = facadeType 
@@ -136,7 +137,8 @@ class Geometry(object):
   output(s):  None
   """   
   def setWall(self,wall):
-    self.wall = wall
+    self.partner = wall
+    wall.partner = self
     # check if normals agree
     if (np.linalg.norm(wall.n-self.n) > 1e-6):
       print "warning: window and wall normals do not agree"
@@ -156,13 +158,10 @@ class Geometry(object):
     self.n = self.n/np.linalg.norm(self.n)
 
     self.orient = np.pi/2.+np.arctan2(self.n[1],self.n[0])
-    # self.orient = np.arctan2(self.n[1],self.n[0])
 
     self.tilt = np.pi/2.- np.arctan2(np.sqrt(self.n[0]*self.n[0]
       +self.n[1]*self.n[1]),self.n[2])
 
-    # if self.orient > np.pi:
-    #   self.orient -= 2.*np.pi
     """
     This is part where directions are defined
 
@@ -366,7 +365,7 @@ class GeometrySet(object):
     bins = list(set([g.dir for g in self.g]));
     area = {b:0. for b in bins}
     for g in self.g:
-      area[g.dir] += area[g.dir] + g.height()*g.width()
+      area[g.dir] += g.height()*g.width()
 
     area['total'] = np.sum([area[b] for b in bins])
     return area
@@ -419,6 +418,11 @@ class GeometrySet(object):
     if not SHAPELY:
       return  
     for A in self.g:
+      if (A.facadeType != 'window'):
+        continue # don't waste time doing this, we won't solve on it anyways
+      if (A.facadeType == 'window' and A.partner != None): 
+        continue # use the partner, don't worry about this one
+
       # minimum z coordinate
       min_z = min([c[2] for c in A])
 
@@ -464,6 +468,11 @@ class GeometrySet(object):
   output(s):  True/False
   """
   def similar(self,A,B):
+    if A.facadeType != B.facadeType:
+      return False
+    if A.partner is not None and B.partner is not None:
+      if not similar(A.partner,B.partner):
+        return False
     tol = 1e-4
     if(abs(A.height() - B.height()) > tol):
       return False
@@ -502,6 +511,10 @@ class GeometrySet(object):
       if not SHAPELY:
         return      
       for A in self.g:
+        if (A.facadeType != 'window'):
+          continue # don't waste time doing this, we won't solve on it anyways
+        if (A.facadeType == 'window' and A.partner != None): 
+          continue # use the partner, don't worry about this one
         # B is in the match of A if:
         # it hasnt been added, its similar, its not exactly the same one
         # and for now, its subset is either empty or size 1

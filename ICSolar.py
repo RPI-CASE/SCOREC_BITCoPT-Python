@@ -106,9 +106,10 @@ def solve(problemInputs,solverInputs):
   for i in range(len(geometry)):
     shadingIndices.append([])
   for g in geometry:
-    for i in range(g.nY):
-      shadingIndices[geometry.index(g)].append \
-        (shading.getShadingIndex(0,i,1,g.nY))
+    if g.facadeType == 'window':
+      for i in range(g.nY):
+        shadingIndices[geometry.index(g)].append \
+          (shading.getShadingIndex(0,i,1,g.nY))
 
   ############################################### daytime setup
   # idea is that we don't solve when its not daytime
@@ -131,8 +132,11 @@ def solve(problemInputs,solverInputs):
     sunPosition = solar.getSunPosition(time)
 
     for g in geometry:
+      if g.facadeType != 'window':
+        continue
       index = geometry.index(g)
       matches = geometry.getMatches(g)
+
       # if there are no matches, or the first match index is greater than
       # this index, it is the first one that needs to be solved
       # otherwise, don't waste time solving this

@@ -25,7 +25,6 @@ import base.blocks as b
 import base.flux as f
 import base.problem as p
 import base.source as s
-import base.geom as g
 
 import time as cputime
 import numpy as np
