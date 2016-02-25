@@ -151,16 +151,18 @@ class Geometry(object):
   """   
   def _setGeometricData(self):
     # normal vector
-    self.n = np.cross(self.coords[2]-self.coords[0],
+    self.n = np.cross(self.coords[2]-self.coords[1],
       self.coords[1]-self.coords[0])
     self.n = self.n/np.linalg.norm(self.n)
 
     self.orient = np.pi/2.+np.arctan2(self.n[1],self.n[0])
+    # self.orient = np.arctan2(self.n[1],self.n[0])
+
     self.tilt = np.pi/2.- np.arctan2(np.sqrt(self.n[0]*self.n[0]
       +self.n[1]*self.n[1]),self.n[2])
 
-    if self.orient > 0.999999999*np.pi:
-      self.orient -= 2.*np.pi
+    # if self.orient > np.pi:
+    #   self.orient -= 2.*np.pi
     """
     This is part where directions are defined
 
@@ -168,14 +170,19 @@ class Geometry(object):
     they are used as an easy way to check if facades will interact
     """
     # its a roof if the tilt is greater than 51 degrees
-    if(abs(self.orient) <= np.pi/4. and self.tilt < 2.*np.pi/7.):
-      self.dir = 'south'
-    elif(abs(self.orient-np.pi/2.) <= np.pi/4. and self.tilt < 2.*np.pi/7.):
-      self.dir = 'east'
-    elif(abs(self.orient+np.pi) <= np.pi/4. and self.tilt < 2.*np.pi/7.):
-      self.dir = 'north'
-    elif(abs(self.orient+np.pi/2.) <= np.pi/4. and self.tilt < 2.*np.pi/7.):
-      self.dir = 'west'
+    if (self.tilt < 2.*np.pi/7.):
+      if(abs(self.orient) <= np.pi/4.):
+        self.dir = 'south'
+      elif(abs(self.orient-np.pi/2.) <= np.pi/4.):
+        self.dir = 'east'
+      elif(abs(self.orient-np.pi) <= np.pi/4.):
+        self.dir = 'north'
+      elif(abs(self.orient-3*np.pi/2.) <= np.pi/4.):
+        self.dir = 'west'
+      else:
+        self.dir = 'unknown'
+        print 'warning: facade with tilt of '+str(self.tilt)+' and orient of '+str(self.orient) \
+          + ' has unknown direction'
     elif(self.tilt > 2.*np.pi/7.):
       self.dir = 'roof'
     else:
@@ -622,8 +629,8 @@ output(s):      none
 def plot(GeometrySet,**options):
   ax = plt.gcf().gca(projection='3d')
   ax.view_init(60,210)
-  ax.set_xlabel('South',fontsize=18)
-  ax.set_ylabel('West',fontsize=18)
+  ax.set_xlabel('South, X',fontsize=18)
+  ax.set_ylabel('West, Y',fontsize=18)
   # ax.set_zlabel('Height',fontsize=18)
 
   for g in GeometrySet:
@@ -635,10 +642,10 @@ def plot(GeometrySet,**options):
       xyz[i].append(xyz[i][0])
 
     ax.plot(xyz[0],xyz[1],zs=xyz[2],color='black')
-    ax.set_xticks([])
-    ax.set_yticks([])
+    # ax.set_xticks([])
+    # ax.set_yticks([])
 
-    ax.set_zticks([])
+    # ax.set_zticks([])
     # Get rid of the panes
     ax.w_xaxis.set_pane_color((1.0, 1.0, 1.0, 0.0))
     ax.w_yaxis.set_pane_color((1.0, 1.0, 1.0, 0.0))

@@ -78,7 +78,7 @@ def readNewFile(filename,name,useSunlit = True):
     # loop until you hit an empty line, denoting a new entry
     while index < len(lines) and lines[index].strip():
       # remove the endline and initial tabs that are present
-      data[header][-1].append(lines[index].rstrip('\n').lstrip('\t'))
+      data[header][-1].append(lines[index].rstrip('\n').lstrip('\t').lstrip(' '))
       index = index+1
     # skip the blank line
     index = index+1
@@ -92,6 +92,7 @@ def readNewFile(filename,name,useSunlit = True):
       starting_vertex_position = item[0:item.find(',')]
     if ( 'Vertex Entry Direction' in item):
       vertex_entry_direction = item[0:item.find(',')]
+
   if starting_vertex_position == 'UpperLeftCorner':
     coord_offset = 2 # my starting corner is bottom right
 
@@ -101,12 +102,13 @@ def readNewFile(filename,name,useSunlit = True):
   building_surface_list = data['BuildingSurface:Detailed']
   walls = {}
   for surface in building_surface_list:
+
     name = surface[1].split(',')[0]
     surface_type = surface[2].split(',')[0]
     # ignore all surfaces not named "Wall"
     if surface_type != 'Wall':
       continue
-    coords = [[float(a[:-2]) for a in c.split(' ')] for c in surface[-4:]]
+    coords = [[a[:-2] for a in c.split(' ')[0:3]] for c in surface[-4:]]
     coords = [coords[(i + coord_offset) % 4] for i in range(len(coords))]
     coords = [np.array(coord,float) for coord in coords]
     geom = g.Geometry(coords,'wall')
@@ -118,7 +120,7 @@ def readNewFile(filename,name,useSunlit = True):
     name = surface[1].split(',')[0]
     surface_type = surface[2].split(',')[0]
     wall_name = surface[4].split(',')[0]
-    coords = [[float(a[:-2]) for a in c.split(' ')] for c in surface[-4:]]
+    coords = [[a[:-2] for a in c.split(' ')[0:3]] for c in surface[-4:]]
     coords = [coords[(i + coord_offset) % 4] for i in range(len(coords))]
     coords = [np.array(coord,float) for coord in coords]
     geom = g.Geometry(coords)
@@ -129,6 +131,13 @@ def readNewFile(filename,name,useSunlit = True):
       geom = g.Geometry(coords)
     geometrySet.append(geom)
 
+  geometrySet.computeSubsets(useSunlit)
+  geometrySet.computeMatches(useSunlit)
+
+  # for i in range(len(geometrySet)):
+  #   print i, [geometrySet.index(s) for s in geometrySet.s[i]], geometrySet[i].dir
+
+  # g.plot(geometrySet,numbers = True, normals = True)
   return geometrySet
 """
 writeVTKFile:   writes a paraview VTK file of the data stored in the geometry
