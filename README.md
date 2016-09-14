@@ -10,21 +10,25 @@ There are three main dependencies that may need to be installed: pytz for timezo
 ### Manual Install
 This method of installation has been more successful.
 
-Install pytz (http://pytz.sourceforge.net/) using:
+#### Install pytz (http://pytz.sourceforge.net/) using:
 ```
 pip install pytz
 ```
+If installed already, you can move to the next step.
 
-Install Pysolar (https://github.com/pingswept/pysolar), legacy 0.6 for Python 2.x:
+
+#### Install Pysolar (https://github.com/pingswept/pysolar), legacy 0.6 for Python 2.x:
 * Download source code from https://github.com/pingswept/pysolar/releases/tag/0.6
 * Unzip and move folder to accessible location
-* Navigate CMD/Console into the folder
+* Open the pysolar-0.6 folder
+* If on Windows: Click on the navigation bar and type CMD
+* If on Mac/Linux: Navigate CMD/Console into the folder
 * Within CMD/Console type:
 ```
 python setup.py install
 ```
 
-Install Shapely (https://pypi.python.org/pypi/Shapely):
+#### Install Shapely (https://pypi.python.org/pypi/Shapely):
 
 For Mac OSX and Linux:
 ```
@@ -41,17 +45,17 @@ For Windows:
 pip install [name of shapely file].whl
 ```
 
-Install joblib (https://pypi.python.org/pypi/joblib):
+#### Install joblib (https://pypi.python.org/pypi/joblib):
 ```
 pip install joblib
 ```
 
-Install numdifftools (https://pypi.python.org/pypi/Numdifftools):
+#### Install numdifftools (https://pypi.python.org/pypi/Numdifftools):
 ```
 pip install numdifftools
 ```
 
-### Automatic Install
+### Automatic Install - not currently working
 Update distribute libraries with (may require admin):
 ```
 pip install --upgrade pip
