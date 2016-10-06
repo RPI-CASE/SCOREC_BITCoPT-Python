@@ -10,6 +10,7 @@ import numpy as np
 import time as cputime
 import matplotlib.pyplot as plt
 import os
+import sys
 from joblib import Parallel, delayed
 """
 This file contains an example run for ICSolar with geometry
@@ -301,7 +302,13 @@ This also does the parallelization, load balancing, time zones, etc
 """
 def run(init,solverInputs):
   ############################################### data loading
-  data = weather.readTMY(init['TMY'])
+  if init['TMY'].endswith('.csv'):
+    data = weather.readTMY(init['TMY'])
+  elif init['TMY'].endswith('.epw'):
+    data = weater.readEPW(init['TMY'])
+  else:
+    sys.exit('The weather file was not loaded correctly. Please provide either an .epw file from \
+      https://energyplus.net/weather or a .csv file from http://rredc.nrel.gov/solar/old_data/nsrdb/1991-2005/tmy3/by_state_and_city.html') 
   DNI = data['DNI']
   DHI = data['DHI']
   exteriorAirTemp = data['airTemp']

@@ -23,6 +23,8 @@ def readTMY(filename):
   data['lat'] = float(lines[0].split(',')[4])
   data['lon'] = float(lines[0].split(',')[5])
 
+  # Get index number in second row of the weather file 
+  # that corresponds to the header string
   AIRindex = lines[1].split(',').index('Dry-bulb (C)')
   DNIindex = lines[1].split(',').index('DNI (W/m^2)')
   DHIindex = lines[1].split(',').index('DHI (W/m^2)')
@@ -35,6 +37,31 @@ def readTMY(filename):
   # Diffuse Horizontal Irradiance
   data['DHI'] = [float(lines[i].split(',')[DHIindex]) 
     for i in range(2,len(lines))]
+
+  return data
+
+def readEPW(filename):
+  # Same as read TMY but for an EPW format
+  # Read header for location info
+  f = open(filename,'r')
+  firstLine = f.readline()
+  f.close()
+
+  data = {}
+  data['city'] = firstLine.split(',')[1]
+  data['lat'] = float(firstLine.split(',')[6])
+  data['lon'] = float(firstLine.split(',')[7])
+  data['timezone'] = float(firstLine.split(',')[8])
+
+  # Read columns for weather data and assign dictionary names
+  wd = np.genfromtxt(filename, delimiter=',', skip_header=8, names=('year','month','day','hour','x1','x2','drybulb','dewpoint','relhum','atmospress','exthorzrad','extdirrad','horzIRsky','globhorzrad','dirnormrad','difhorzrad','globhorzillum','dirnormillum','difhorzillum','zenlum','windir','windspd','totskycvr','opaqskycvr','visibility','ceilinghgt','presweatobs','preswethcodes','precipwtr','aerosol','snowdepth','daylastsnow','albedo','rain','rainquant'))
+
+  # Direct Normal Irradiance
+  data['DNI'] = wd['dirnormrad']
+  # Dry-Bulb Air Temperature
+  data['airTemp'] = wd['drybulb']
+  # Diffuse Horizontal Irradiance
+  data['DHI'] = wd['difhorzrad']
 
   return data
 
