@@ -1,3 +1,5 @@
+import numpy as np
+
 """
 weather.py contains the reader for TMY files and other
 weather related functions
