@@ -76,12 +76,16 @@ def solve(problemInputs,solverInputs):
   exteriorAirTemp = problemInputs['exteriorAirTemp']
   DHI = problemInputs['DHI']
 
+  dt = solverInputs['dt']
+
   stepsPerDay = problemInputs['stepsPerDay']
 
+  interpTime = range(startDay*24,endDay*24)
   days = endDay - startDay
   timesteps = days*stepsPerDay
   startStep = startDay*stepsPerDay
-  endStep = (days+startDay)*stepsPerDay
+  endStep = endDay*stepsPerDay
+  print "startStep", startStep, "endStep", endStep
 
   ############################################### set up results 
 
@@ -121,16 +125,25 @@ def solve(problemInputs,solverInputs):
   ############################################### solver
   clockStart = cputime.time()
   for ts in range(startStep,endStep):
+    # Change the timestep (ts) to time (in seconds) that the model can work with
+    tsToSec = ts*dt
+    tsToHour = ts*dt/3600.0 
+
+    dniForTS = np.interp(tsToHour,interpTime,DNI)
+    dhiForTS = np.interp(tsToHour,interpTime,DHI)
+    exteriorAirTempForTS = np.interp(tsToSec,interpTime,exteriorAirTemp)
+
     # its daytime if DNI > 0 for three straight hours
     # this logic is suspect at best
     if(1 < ts and ts < endStep-1):
-      daytime = (DNI[ts-startStep-1]+DNI[ts-startStep]+DNI[ts-startStep+1] > 0)
+      # daytime = (DNI[ts-startStep-1]+DNI[ts-startStep]+DNI[ts-startStep+1] > 0)
+      daytime = (np.interp(tsToHour-dt,interpTime,DNI)+dniForTS+np.interp(tsToHour+dt,interpTime,DNI) > 0)
 
     # once the first daytime hits, we are done initializing
-    time = solverInputs['dt']*ts
-    solverInputs['exteriorAirTemp'] = exteriorAirTemp[ts-startStep]
+    # time = solverInputs['dt']*ts
+    solverInputs['exteriorAirTemp'] = exteriorAirTempForTS
 
-    sunPosition = solar.getSunPosition(time)
+    sunPosition = solar.getSunPosition(tsToSec)
 
     for g in geometry:
       if g.facadeType != 'window':
@@ -146,11 +159,11 @@ def solve(problemInputs,solverInputs):
         # averaged -> shading vector applied uniformly, not to top or bottom
 
         if useSunlitFraction is True:
-          (sunlit,averaged) = shading.getMeanSunlitFraction(geometry,g,time,solverInputs['dt'],5)
+          (sunlit,averaged) = shading.getMeanSunlitFraction(geometry,g,tsToSec,solverInputs['dt'],5)
         else:
           # if not using sunlit fraction, then just pick 0 or 1
           averaged = True
-          if(DNI[ts-startStep] == 0 and DHI[ts-startStep] == 0):
+          if(dniForTS == 0 and dhiForTS == 0):
             sunlit = 0.
           else:
             sunlit = 1.0
@@ -172,7 +185,7 @@ def solve(problemInputs,solverInputs):
         facadeData['yaw'][index][ts-startStep] = yaw
         facadeData['pitch'][index][ts-startStep] = pitch
         facadeData['shade'][index][ts-startStep] = shade[int(g.nY/2)] # shading in the middle
-        facadeData['dni'][index][ts-startStep] = DNI[ts-startStep]
+        facadeData['dni'][index][ts-startStep] = dniForTS
 
         # handle the matching facades, the ones we wont solve for, but make sure their data is
         # properly stored
@@ -181,7 +194,7 @@ def solve(problemInputs,solverInputs):
             facadeData[name][geometry.index(match)] = facadeData[name][index]
 
         # set up air temperature
-        g.data['externalAirT'] = np.ones(g.nY)*exteriorAirTemp[ts-startStep]
+        g.data['externalAirT'] = np.ones(g.nY)*exteriorAirTempForTS
 
         # don't solve this facade if the sun can't see it, but zero 
         # all data
@@ -194,8 +207,8 @@ def solve(problemInputs,solverInputs):
 
         shadedVector = shading.applySunlitFraction(sunlit,g,averaged)
 
-        g.data['DNI'] = DNI[ts-startStep]*shadedVector
-        g.data['DHI'] = DHI[ts-startStep]*shadedVector
+        g.data['DNI'] = dniForTS*shadedVector
+        g.data['DHI'] = dhiForTS*shadedVector
         g.data['Glazing'] = glaze*shadedVector
 
         g.data['DNIatModule'] = g.data['DNI']*glaze*shade
@@ -368,6 +381,7 @@ def run(init,solverInputs):
   problemInputs = []
   for (start,end) in procSplit:
     stepRange = slice(start*stepsPerDay,end*stepsPerDay)
+    print "stepRange ", stepRange
     inputDict = {
     'range':(start,end),
     'directory':init['directory'],
@@ -381,7 +395,8 @@ def run(init,solverInputs):
     }
     problemInputs.append(inputDict)
 
-  results = Parallel(n_jobs = init['numProcs'])(delayed(solve)(problemInputs[i],solverInputs) for i in range(init['numProcs']))
+  results = solve(problemInputs[0],solverInputs)
+  # results = Parallel(n_jobs = init['numProcs'])(delayed(solve)(problemInputs[i],solverInputs) for i in range(init['numProcs']))
   print data['city'],'final runtime is','%.2f' % (cputime.time()-clockStart)
 
   ############################################### collapse results
@@ -481,6 +496,7 @@ if __name__ == "__main__":
     os.makedirs('Results')
 
   tilt = 0
+  stepsPerHour = 4
 
   # these are general variables
   init = { 
@@ -494,12 +510,13 @@ if __name__ == "__main__":
   'useSunlitFraction':True,
   'writeDataFiles':True,
   'writeVTKFiles':True,
-  'stepsPerDay':24,
+  'stepsPerHour':stepsPerHour,
+  'stepsPerDay':24*stepsPerHour,
   }
 
   # these are run specific variables
   solverInputs = {
-  'dt':init['stepsPerDay']/24.*3600.,
+  'dt':24./init['stepsPerDay']*3600.,
   'eta':0.33, # electrical efficiency, constant for now.
   'length':icsolar.moduleHeight,
   'inletWaterTemp':20.0,
@@ -518,5 +535,7 @@ if __name__ == "__main__":
   # data per direction
   'directionDataNames':['thermal','elect'],
   }
+
+  print 'dt', solverInputs['dt']
 
   run(init,solverInputs)
