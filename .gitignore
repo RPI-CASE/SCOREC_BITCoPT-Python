@@ -10,3 +10,4 @@ doc/*.gz
 doc/*.aux
 doc/*.log
 doc/*.out
+WeatherDataCheck.csv
