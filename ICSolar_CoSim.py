@@ -341,8 +341,11 @@ def run(init,solverInputs):
 
   stepsPerDay = init['stepsPerDay']
   timesteps = init['days']*stepsPerDay
+  print "Run timesteps:", timesteps
   startStep = init['startDay']*stepsPerDay
+  print "Run startStep:", startStep
   endStep = (init['days']+init['startDay'])*stepsPerDay
+  print "Run endStep:", endStep
 
   procSplit = loadBalance(init['days'],init['startDay'],init['numProcs'],DNI)
   clockStart = cputime.time()
@@ -397,8 +400,8 @@ def run(init,solverInputs):
     }
     problemInputs.append(inputDict)
 
-  results = solve(problemInputs[0],solverInputs)
-  # results = Parallel(n_jobs = init['numProcs'])(delayed(solve)(problemInputs[i],solverInputs) for i in range(init['numProcs']))
+  # results = solve(problemInputs[0],solverInputs)
+  results = Parallel(n_jobs = init['numProcs'])(delayed(solve)(problemInputs[i],solverInputs) for i in range(init['numProcs']))
   print data['city'],'final runtime is','%.2f' % (cputime.time()-clockStart)
 
   ############################################### collapse results
@@ -406,7 +409,7 @@ def run(init,solverInputs):
   for i in range(init['numProcs']):
     (start,end) = procSplit[i]
     resultRange = slice((start-init['startDay'])*init['stepsPerDay'],(end-init['startDay'])*init['stepsPerDay'])
-    print resultRange
+    print "resultRange:",resultRange
     for b in bins:
       for name in solverInputs['directionDataNames']:
         directionData[name][b][resultRange] = results[i][0][name][b]
@@ -446,51 +449,51 @@ def run(init,solverInputs):
 
   # generate some plots in the Results/ directory
   # check the data is available
-  if ('thermal' in directionData and 'elect' in directionData):
+  # if ('thermal' in directionData and 'elect' in directionData):
 
-    linestyles = {'south':'--sk', 'roof':'--k', 'east':'--xk', 'west':'--ok', 'total':'-k'}
+  #   linestyles = {'south':'--sk', 'roof':'--k', 'east':'--xk', 'west':'--ok', 'total':'-k'}
 
-    plt.subplot(1,3,1)
-    for b in bins:
-      plt.plot(np.arange(startStep,endStep)/stepsPerDay,np.cumsum(directionData['thermal'][b])/area[b],linestyles[b],
-        linewidth=2.0,label=b,markevery=30*stepsPerDay,markersize=7,fillstyle='none',markeredgewidth=2)
+  #   plt.subplot(1,3,1)
+  #   for b in bins:
+  #     plt.plot(np.arange(startStep,endStep)/stepsPerDay,np.cumsum(directionData['thermal'][b])/area[b],linestyles[b],
+  #       linewidth=2.0,label=b,markevery=30*stepsPerDay,markersize=7,fillstyle='none',markeredgewidth=2)
 
-    axes = plt.gca()
-    axes.tick_params(axis='both', which='major', labelsize=18)
+  #   axes = plt.gca()
+  #   axes.tick_params(axis='both', which='major', labelsize=18)
 
-    plt.legend(loc='upper left',fontsize=18)
-    plt.ylabel('Thermal Output ($kWh/m^2$)',fontsize=18), plt.xlabel('Time (Days)',fontsize=18)
-    plt.xlim(init['startDay'],init['startDay']+init['days'])
+  #   plt.legend(loc='upper left',fontsize=18)
+  #   plt.ylabel('Thermal Output ($kWh/m^2$)',fontsize=18), plt.xlabel('Time (Days)',fontsize=18)
+  #   plt.xlim(init['startDay'],init['startDay']+init['days'])
 
-    plt.subplot(1,3,2)
-    for b in bins:
-      plt.plot(np.arange(startStep,endStep)/stepsPerDay,np.cumsum(directionData['elect'][b])/area[b],linestyles[b],
-        linewidth=2.0,label=b,markevery=30*stepsPerDay,markersize=7,fillstyle='none',markeredgewidth=2)
+  #   plt.subplot(1,3,2)
+  #   for b in bins:
+  #     plt.plot(np.arange(startStep,endStep)/stepsPerDay,np.cumsum(directionData['elect'][b])/area[b],linestyles[b],
+  #       linewidth=2.0,label=b,markevery=30*stepsPerDay,markersize=7,fillstyle='none',markeredgewidth=2)
 
-    plt.legend(loc='upper left',fontsize=18)
-    plt.ylabel('Electrical Output ($kWh/m^2$)',fontsize=18), plt.xlabel('Time (Days)',fontsize=18)
-    plt.xlim(init['startDay'],init['startDay']+init['days'])
-    axes = plt.gca()
-    axes.tick_params(axis='both', which='major', labelsize=18)
+  #   plt.legend(loc='upper left',fontsize=18)
+  #   plt.ylabel('Electrical Output ($kWh/m^2$)',fontsize=18), plt.xlabel('Time (Days)',fontsize=18)
+  #   plt.xlim(init['startDay'],init['startDay']+init['days'])
+  #   axes = plt.gca()
+  #   axes.tick_params(axis='both', which='major', labelsize=18)
 
-    plt.subplot(1,3,3)
-    plt.plot(np.arange(startStep,endStep)/stepsPerDay,
-      np.cumsum(directionData['thermal']['total']+directionData['elect']['total'])/area['total'],
-      linewidth=2.0,label='total',linestyle='-',color='0.01')
-    plt.plot(np.arange(startStep,endStep)/stepsPerDay,np.cumsum(directionData['thermal']['total'])/area['total'],
-      linewidth=2.0,label='thermal',linestyle='--',color='0.20')
-    plt.plot(np.arange(startStep,endStep)/stepsPerDay,np.cumsum(directionData['elect']['total'])/area['total'],
-      linewidth=2.0,label='electrical',linestyle='-.',color='0.4')
-    plt.ylabel('Total Output ($kWh/m^2$)',fontsize=18), plt.xlabel('Time (Days)',fontsize=18)
-    plt.xlim(init['startDay'],init['startDay']+init['days'])
-    axes = plt.gca()
-    plt.legend(loc='upper left',fontsize=18)
-    axes.tick_params(axis='both', which='major', labelsize=18)
+  #   plt.subplot(1,3,3)
+  #   plt.plot(np.arange(startStep,endStep)/stepsPerDay,
+  #     np.cumsum(directionData['thermal']['total']+directionData['elect']['total'])/area['total'],
+  #     linewidth=2.0,label='total',linestyle='-',color='0.01')
+  #   plt.plot(np.arange(startStep,endStep)/stepsPerDay,np.cumsum(directionData['thermal']['total'])/area['total'],
+  #     linewidth=2.0,label='thermal',linestyle='--',color='0.20')
+  #   plt.plot(np.arange(startStep,endStep)/stepsPerDay,np.cumsum(directionData['elect']['total'])/area['total'],
+  #     linewidth=2.0,label='electrical',linestyle='-.',color='0.4')
+  #   plt.ylabel('Total Output ($kWh/m^2$)',fontsize=18), plt.xlabel('Time (Days)',fontsize=18)
+  #   plt.xlim(init['startDay'],init['startDay']+init['days'])
+  #   axes = plt.gca()
+  #   plt.legend(loc='upper left',fontsize=18)
+  #   axes.tick_params(axis='both', which='major', labelsize=18)
 
-    plt.gcf().set_size_inches(15,5)
-    plt.tight_layout()
-    plt.savefig('Results/'+init['directory']+'_outputs.png')
-    plt.close()
+  #   plt.gcf().set_size_inches(15,5)
+  #   plt.tight_layout()
+  #   plt.savefig('Results/'+init['directory']+'_outputs.png')
+  #   plt.close()
 
 if __name__ == "__main__":
   test.runTests()
@@ -506,7 +509,7 @@ if __name__ == "__main__":
   'numProcs':1,
   'tilt':tilt,
   'startDay':0,
-  'days':5,
+  'days':365,
   'directory':'Chicago'+str(tilt),
   'TMY':'data/TMY/USA_IL_Chicago.epw',
   'geomfile':'data/geometry/whole-building-single.txt',
