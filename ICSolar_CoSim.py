@@ -337,7 +337,7 @@ def run(init,solverInputs):
   geometry.initializeData(solverInputs['moduleDataNames'])
   casegeom.tiltGeometry(geometry,init['tilt'],init['useSunlitFraction'])
 
-  stepsPerDay = 24
+  stepsPerDay = init['stepsPerDay']
   timesteps = init['days']*stepsPerDay
   startStep = init['startDay']*stepsPerDay
   endStep = (init['days']+init['startDay'])*stepsPerDay
@@ -395,8 +395,8 @@ def run(init,solverInputs):
     }
     problemInputs.append(inputDict)
 
-  results = solve(problemInputs[0],solverInputs)
-  # results = Parallel(n_jobs = init['numProcs'])(delayed(solve)(problemInputs[i],solverInputs) for i in range(init['numProcs']))
+  # results = solve(problemInputs[0],solverInputs)
+  results = Parallel(n_jobs = init['numProcs'])(delayed(solve)(problemInputs[i],solverInputs) for i in range(init['numProcs']))
   print data['city'],'final runtime is','%.2f' % (cputime.time()-clockStart)
 
   ############################################### collapse results
@@ -404,6 +404,7 @@ def run(init,solverInputs):
   for i in range(init['numProcs']):
     (start,end) = procSplit[i]
     resultRange = slice((start-init['startDay'])*stepsPerDay,(end-init['startDay'])*stepsPerDay)
+    print resultRange
     for b in bins:
       for name in solverInputs['directionDataNames']:
         directionData[name][b][resultRange] = results[i][0][name][b]
@@ -503,7 +504,7 @@ if __name__ == "__main__":
   'numProcs':1,
   'tilt':tilt,
   'startDay':0,
-  'days':365,
+  'days':5,
   'directory':'Chicago'+str(tilt),
   'TMY':'data/TMY/USA_IL_Chicago.epw',
   'geomfile':'data/geometry/whole-building-single.txt',
