@@ -81,6 +81,8 @@ def solve(problemInputs,solverInputs):
   stepsPerDay = problemInputs['stepsPerDay']
 
   interpTime = range(startDay*24,endDay*24)
+  print "interpTime length:", len(interpTime)
+  print "DNI length:", len(DNI)
   days = endDay - startDay
   timesteps = days*stepsPerDay
   startStep = startDay*stepsPerDay
@@ -380,7 +382,7 @@ def run(init,solverInputs):
   """
   problemInputs = []
   for (start,end) in procSplit:
-    stepRange = slice(start*stepsPerDay,end*stepsPerDay)
+    stepRange = slice(start*24,end*24)
     print "stepRange ", stepRange
     inputDict = {
     'range':(start,end),
@@ -395,15 +397,15 @@ def run(init,solverInputs):
     }
     problemInputs.append(inputDict)
 
-  # results = solve(problemInputs[0],solverInputs)
-  results = Parallel(n_jobs = init['numProcs'])(delayed(solve)(problemInputs[i],solverInputs) for i in range(init['numProcs']))
+  results = solve(problemInputs[0],solverInputs)
+  # results = Parallel(n_jobs = init['numProcs'])(delayed(solve)(problemInputs[i],solverInputs) for i in range(init['numProcs']))
   print data['city'],'final runtime is','%.2f' % (cputime.time()-clockStart)
 
   ############################################### collapse results
 
   for i in range(init['numProcs']):
     (start,end) = procSplit[i]
-    resultRange = slice((start-init['startDay'])*stepsPerDay,(end-init['startDay'])*stepsPerDay)
+    resultRange = slice((start-init['startDay'])*init['stepsPerDay'],(end-init['startDay'])*init['stepsPerDay'])
     print resultRange
     for b in bins:
       for name in solverInputs['directionDataNames']:
