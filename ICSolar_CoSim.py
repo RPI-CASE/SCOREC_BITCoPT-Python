@@ -13,6 +13,7 @@ import os
 import sys
 from joblib import Parallel, delayed
 from datetime import timedelta
+from pyfmi import load_fmu
 """
 This file contains an example run for ICSolar with geometry
 It relies on the icsolar problem setup in src.icsolar,
@@ -81,7 +82,7 @@ def solve(problemInputs,solverInputs):
 
   stepsPerDay = problemInputs['stepsPerDay']
 
-  interpTime = range(startDay*24,endDay*24) # Either needs to be for the year or needs an int
+  interpTime = range(startDay*24,endDay*24) # hourly value from 0 to 8760, needs to be int
   # print "interpTime length:", len(interpTime)
   # print "DNI length:", len(DNI)
   # print "exteriorAirTemp length:", len(exteriorAirTemp)
@@ -93,6 +94,17 @@ def solve(problemInputs,solverInputs):
 
   ############################################### load EnergyPlus FMu for co-simulation
   # fill in load code here 
+
+  # load FMU
+  fmuModel = load_fmu('./data/fmu/'+problemInputs['fmuModelName'])
+
+  # load options
+  opts = fmuModel.simulate_options()
+  # set number of communication points equal to timesteps
+  opts['ncp'] = timesteps
+  # manual initialize
+  opts['initialize'] = False
+  fmuModel.initialize(startDay*86400,endDay*86400)
 
   ############################################### set up results 
 
@@ -295,11 +307,15 @@ def solve(problemInputs,solverInputs):
     # post processing and cleanup
 
     # co-simulation
-    # cavAirTemp = np.average(results['airModule'])
+    fmuModel.set('SouthCavAirTemp',avgCavityAirTemp) # Will need to get smarter with this when working with multiple windows
+    cosimRes = fmuModel.do_step(current_t=tsToSec,step_size=dt, new_step=True)
     
     if(daytime and problemInputs['writeVTKFiles']):
       casegeom.writeVTKfile(geometry,'Results/'+directory+'/VTK/geom'+'0'*(4-len(str(ts)))+str(ts)+'.vtk','')
- 
+  
+  # terminate co-simulation
+  fmuModel.terminate()
+  
   print "runtime for days",startDay,"to",startDay+days-1,":",'%.2f' % (cputime.time()-clockStart)
   return (directionData,facadeData)
 
@@ -349,9 +365,12 @@ def run(init,solverInputs):
     sys.exit('The weather file was not loaded correctly. Please provide either an .epw file from \
       https://energyplus.net/weather or a .csv file from http://rredc.nrel.gov/solar/old_data/nsrdb/1991-2005/tmy3/by_state_and_city.html') 
 
-  # with open('WeatherDataCheck.csv', 'wb') as myfile:
-  #   np.savetxt(myfile, data['airTemp'], delimiter=',')
-  #   myfile.close()
+  saveVars = zip(data['airTemp'])
+  # head = ['extAirTemp']
+
+  with open('WeatherDataCheck.csv', 'wb') as myfile:
+    np.savetxt(myfile, saveVars, delimiter=',')
+    myfile.close()
 
   DNI = data['DNI']
   DHI = data['DHI']
@@ -426,6 +445,7 @@ def run(init,solverInputs):
     'exteriorAirTemp':exteriorAirTemp[stepRange],
     'DHI':DHI[stepRange],
     'stepsPerDay':init['stepsPerDay'],
+    'fmuModelName':init['fmuModelName']
     }
     problemInputs.append(inputDict)
 
@@ -537,11 +557,12 @@ if __name__ == "__main__":
   init = { 
   'numProcs':1,
   'tilt':tilt,
-  'startDay':200,
-  'days':2,
+  'startDay':0,
+  'days':5,
   'directory':'Chicago'+str(tilt),
-  'TMY':'data/TMY/USA_IL_Chicago.epw',
+  'TMY':'data/TMY/USA_CO_Golden.epw',
   'geomfile':'data/geometry/whole-building-single.txt',
+  'fmuModelName':'SimpleCavity_fmu_export.fmu',
   'useSunlitFraction':True,
   'writeDataFiles':True,
   'writeVTKFiles':True,
