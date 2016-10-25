@@ -137,7 +137,7 @@ def solve(problemInputs,solverInputs):
     dhiForTS = np.interp(tsToHour,interpTime,DHI)
     exteriorAirTempForTS = np.interp(tsToHour,interpTime,exteriorAirTemp)
     # define inlet cavity air temperature to use the outdoor drybulb (or indoor drybulb, later)
-    solverInputs['inletAirTemp'] = exteriorAirTempForTS+1.0
+    solverInputs['inletAirTemp'] = exteriorAirTempForTS
 
     # its daytime if DNI > 0 for three straight hours
     # this logic is suspect at best
