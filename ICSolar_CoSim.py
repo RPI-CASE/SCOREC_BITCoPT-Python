@@ -133,7 +133,6 @@ def solve(problemInputs,solverInputs):
 
     dniForTS = np.interp(tsToHour,interpTime,DNI)
     dhiForTS = np.interp(tsToHour,interpTime,DHI)
-    exteriorAirTempForTS = np.interp(tsToSec,interpTime,exteriorAirTemp)
     exteriorAirTempForTS = np.interp(tsToHour,interpTime,exteriorAirTemp)
 
     # its daytime if DNI > 0 for three straight hours
