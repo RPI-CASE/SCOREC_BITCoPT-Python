@@ -12,6 +12,7 @@ import matplotlib.pyplot as plt
 import os
 import sys
 from joblib import Parallel, delayed
+from datetime import timedelta
 """
 This file contains an example run for ICSolar with geometry
 It relies on the icsolar problem setup in src.icsolar,
@@ -80,14 +81,18 @@ def solve(problemInputs,solverInputs):
 
   stepsPerDay = problemInputs['stepsPerDay']
 
-  interpTime = range(startDay*24,endDay*24)
-  print "interpTime length:", len(interpTime)
-  print "DNI length:", len(DNI)
+  interpTime = range(startDay*24,endDay*24) # Either needs to be for the year or needs an int
+  # print "interpTime length:", len(interpTime)
+  # print "DNI length:", len(DNI)
+  # print "exteriorAirTemp length:", len(exteriorAirTemp)
   days = endDay - startDay
   timesteps = days*stepsPerDay
   startStep = startDay*stepsPerDay
   endStep = endDay*stepsPerDay
-  print "startStep", startStep, "endStep", endStep
+  # print "startStep", startStep, "endStep", endStep
+
+  ############################################### load EnergyPlus FMu for co-simulation
+  # fill in load code here 
 
   ############################################### set up results 
 
@@ -127,6 +132,7 @@ def solve(problemInputs,solverInputs):
   ############################################### solver
   clockStart = cputime.time()
   for ts in range(startStep,endStep):
+    # print "ts:", ts
     # Change the timestep (ts) to time (in seconds) that the model can work with
     tsToSec = ts*dt
     tsToHour = ts*dt/3600.0 
@@ -134,8 +140,10 @@ def solve(problemInputs,solverInputs):
     # interpolate weather data values onces as the beginning of the timestep
     # weather data is hourly, simulation runs sub-hourly
     dniForTS = np.interp(tsToHour,interpTime,DNI)
-    dhiForTS = np.interp(tsToHour,interpTime,DHI)
+    dhiForTS = np.interp(tsToHour,interpTime,DHI) # Consider adding some heat to cavity air from DHI
     exteriorAirTempForTS = np.interp(tsToHour,interpTime,exteriorAirTemp)
+    # print "exterior air temperature =", exteriorAirTempForTS
+
     # define inlet cavity air temperature to use the outdoor drybulb (or indoor drybulb, later)
     solverInputs['inletAirTemp'] = exteriorAirTempForTS
 
@@ -207,6 +215,7 @@ def solve(problemInputs,solverInputs):
         if(not daytime):
           for name in g.data:
             g.data[name] = np.zeros(g.nY)
+          # continue # commented out so that the model still provides values for all timestep
         # energy per cell in the middle module
         facadeData['epc'][index][ts-startStep] = 0.866*625.5*0.0001*g.data['DNIatModule'][int(g.nY/2)]
 
@@ -243,6 +252,15 @@ def solve(problemInputs,solverInputs):
         g.data['inletAirTemp'] = results['airModule']
         g.data['receiverT'] = results['receiver']
 
+        avgCavityAirTemp = np.average(results['airTube'])
+        disDate = timedelta(seconds=int(tsToSec))
+        print '{};  Ext Air Temp [C] = {:.2f};  Cav Air Temp [C] = {:.2f}'.format(disDate,exteriorAirTempForTS,avgCavityAirTemp)
+        #print '    DNI = {:.2f};  DHI = {:.2f};  EPC = {:.2f}'.format(dniForTS,dhiForTS,facadeData['epc'][index][ts-startStep])
+        # co-simulation variables
+        # init['interiorAirTemp']
+        # init['exteriorAirTemp'] # can be pulled from the weather file
+        # results['airModule'] and results['airTube']
+
         # electrical calculations
         electData = np.sum(solverInputs['eta'] \
           *1e-3*0.866*625.5*0.0001*g.data['DNIatModule'])*g.nX
@@ -275,11 +293,14 @@ def solve(problemInputs,solverInputs):
     directionData['elect']['total'][ts-startStep] = \
       sum([directionData['elect'][b][ts-startStep] for b in bins if b is not 'total'])
     # post processing and cleanup
+
+    # co-simulation
+    # cavAirTemp = np.average(results['airModule'])
     
     if(daytime and problemInputs['writeVTKFiles']):
       casegeom.writeVTKfile(geometry,'Results/'+directory+'/VTK/geom'+'0'*(4-len(str(ts)))+str(ts)+'.vtk','')
  
-  print "runtime for days",startDay,"to",startDay+days,":",'%.2f' % (cputime.time()-clockStart)
+  print "runtime for days",startDay,"to",startDay+days-1,":",'%.2f' % (cputime.time()-clockStart)
   return (directionData,facadeData)
 
 """
@@ -327,6 +348,11 @@ def run(init,solverInputs):
   else:
     sys.exit('The weather file was not loaded correctly. Please provide either an .epw file from \
       https://energyplus.net/weather or a .csv file from http://rredc.nrel.gov/solar/old_data/nsrdb/1991-2005/tmy3/by_state_and_city.html') 
+
+  # with open('WeatherDataCheck.csv', 'wb') as myfile:
+  #   np.savetxt(myfile, data['airTemp'], delimiter=',')
+  #   myfile.close()
+
   DNI = data['DNI']
   DHI = data['DHI']
   exteriorAirTemp = data['airTemp']
@@ -511,8 +537,8 @@ if __name__ == "__main__":
   init = { 
   'numProcs':1,
   'tilt':tilt,
-  'startDay':0,
-  'days':365,
+  'startDay':200,
+  'days':2,
   'directory':'Chicago'+str(tilt),
   'TMY':'data/TMY/USA_IL_Chicago.epw',
   'geomfile':'data/geometry/whole-building-single.txt',
@@ -529,7 +555,7 @@ if __name__ == "__main__":
   'eta':0.33, # electrical efficiency, constant for now.
   'length':icsolar.moduleHeight,
   'inletWaterTemp':20.0,
-  'inletAirTemp':20.0,
+  'inletAirTemp':15.0,
   'interiorAirTemp':20.0,
   'waterFlowRate':1.6*1000.*1e-6, # 1.6 mL/s in kg/s
   # 2.0 m/s * 0.16, cross sectional area, times density in kg/s
