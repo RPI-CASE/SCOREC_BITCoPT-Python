@@ -131,9 +131,13 @@ def solve(problemInputs,solverInputs):
     tsToSec = ts*dt
     tsToHour = ts*dt/3600.0 
 
+    # interpolate weather data values onces as the beginning of the timestep
+    # weather data is hourly, simulation runs sub-hourly
     dniForTS = np.interp(tsToHour,interpTime,DNI)
     dhiForTS = np.interp(tsToHour,interpTime,DHI)
     exteriorAirTempForTS = np.interp(tsToHour,interpTime,exteriorAirTemp)
+    # define inlet cavity air temperature to use the outdoor drybulb (or indoor drybulb, later)
+    solverInputs['inletAirTemp'] = exteriorAirTempForTS+1.0
 
     # its daytime if DNI > 0 for three straight hours
     # this logic is suspect at best
@@ -203,7 +207,6 @@ def solve(problemInputs,solverInputs):
         if(not daytime):
           for name in g.data:
             g.data[name] = np.zeros(g.nY)
-          continue
         # energy per cell in the middle module
         facadeData['epc'][index][ts-startStep] = 0.866*625.5*0.0001*g.data['DNIatModule'][int(g.nY/2)]
 
@@ -276,7 +279,7 @@ def solve(problemInputs,solverInputs):
     if(daytime and problemInputs['writeVTKFiles']):
       casegeom.writeVTKfile(geometry,'Results/'+directory+'/VTK/geom'+'0'*(4-len(str(ts)))+str(ts)+'.vtk','')
  
-  print "runtime for days",startDay,"to",startDay+days-1,":",'%.2f' % (cputime.time()-clockStart)
+  print "runtime for days",startDay,"to",startDay+days,":",'%.2f' % (cputime.time()-clockStart)
   return (directionData,facadeData)
 
 """
@@ -341,11 +344,11 @@ def run(init,solverInputs):
 
   stepsPerDay = init['stepsPerDay']
   timesteps = init['days']*stepsPerDay
-  print "Run timesteps:", timesteps
   startStep = init['startDay']*stepsPerDay
-  print "Run startStep:", startStep
   endStep = (init['days']+init['startDay'])*stepsPerDay
+  print "Run startStep:", startStep
   print "Run endStep:", endStep
+  print "Run timesteps:", timesteps
 
   procSplit = loadBalance(init['days'],init['startDay'],init['numProcs'],DNI)
   clockStart = cputime.time()
@@ -386,7 +389,7 @@ def run(init,solverInputs):
   problemInputs = []
   for (start,end) in procSplit:
     stepRange = slice(start*24,end*24)
-    print "stepRange ", stepRange
+    # print "stepRange ", stepRange
     inputDict = {
     'range':(start,end),
     'directory':init['directory'],
