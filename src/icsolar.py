@@ -109,7 +109,7 @@ def solve(init):
     airTube[i].addFlux(f.Flux(airExt,heatCondExterior,{'L':init['length']}))
 
     if('Q_c' in init.keys()):
-      airModule[i].addSource(s.Source('const',T = -init['Q_c'][i]))
+      airModule[i].addSource(s.Source(s.constant,{'T':-init['Q_c'][i]}))
 
   # now set the module regions
   for i in range(init['numModules']):
@@ -142,7 +142,7 @@ def solve(init):
     waterModule[i].addFlux(f.Flux(waterTube[i],heatConvDevice,{'dt':dt}))
 
     # Q_a from DNI
-    if('Q_w' in init.keys()):
+    if('Q_a' in init.keys()):
       airModule[i].addSource(s.Source(s.constant,{'T':-init['Q_a'][i]}))
 
 
