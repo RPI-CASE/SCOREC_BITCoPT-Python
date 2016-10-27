@@ -12,3 +12,4 @@ doc/*.log
 doc/*.out
 WeatherDataCheck.csv
 Output_EPExport_Slave
+SimpleCavity_fmu_export_log.txt
