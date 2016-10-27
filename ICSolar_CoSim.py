@@ -201,7 +201,7 @@ def solve(problemInputs,solverInputs):
           shade[m] = shading.getUnshadedFraction(sunPosition,g,
             shadingIndices[index][m])
 
-
+        # calculate a few variables 
         glaze = max(solar.getGlazingTransmitted(sunPosition,g,1),0)
         AOI = solar.getAOI(sunPosition,g)
         (pitch,yaw) = solar.getArrayAngle(sunPosition,g)
@@ -236,15 +236,22 @@ def solve(problemInputs,solverInputs):
         g.data['DNI'] = dniForTS*shadedVector
         g.data['DHI'] = dhiForTS*shadedVector
         g.data['Glazing'] = glaze*shadedVector
+        facadeData['shadedVector'] = shadedVector
 
-        g.data['DNIatModule'] = g.data['DNI']*glaze*shade
-        g.data['DHIatModule'] = g.data['DHI']*glaze*shade*0.5*(1.+np.sin(g.tilt))
+        # solar energy after the exterior glazing
+        g.data['DNIafterExtGlass'] = g.data['DNI']*glaze
+        g.data['DHIafterExtGlass'] = g.data['DHI']*glaze*0.5*(1.+np.sin(g.tilt))
+
+        # solar energy at the module
+        g.data['DNIatModule'] = g.data['DNIafterExtGlass']*shade
+        g.data['DHIatModule'] = g.data['DHIafterExtGlass']*shade
 
         # solverInputs['Q_w'] = 0.024801*(0.66)*1e-3*g.data['DNIatModule']
         solverInputs['Q_d'] = 0.866*625.5*0.0001*g.data['DNIatModule']*(1.-solverInputs['eta'])
         solverInputs['Q_a'] = np.zeros(g.nY)
-        # (Q_c,Q_I) = support.getRadiativeGain(sunPosition,g,g.data['DNIatModule'],g.data['DHIatModule'])
-        # solverInputs['Q_c'] = g.data['DHIatModule']*icsolar.moduleHeight*icsolar.moduleWidth
+        # solverInputs['Q_c'] = np.zeros(g.nY)
+        (Q_c,Q_I) = support.getRadiativeGain(sunPosition,g,g.data['DNIafterExtGlass'],g.data['DNIafterExtGlass'],g.data['DHIafterExtGlass'])
+        solverInputs['Q_c'] = Q_c*icsolar.moduleHeight*icsolar.moduleWidth
         solverInputs['numModules'] = g.nY
         
         # set up previous temperature
@@ -265,8 +272,10 @@ def solve(problemInputs,solverInputs):
         g.data['receiverT'] = results['receiver']
 
         avgCavityAirTemp = np.average(results['airTube'])
-        disDate = timedelta(seconds=int(tsToSec))
-        print '{};  Ext Air Temp [C] = {:.2f};  Cav Air Temp [C] = {:.2f}'.format(disDate,exteriorAirTempForTS,avgCavityAirTemp)
+        avgModAirTemp = np.average(results['airModule'])
+        if tsToHour%1==0.0:
+          disDate = timedelta(seconds=int(tsToSec))
+          print ('{};  Q_c={:.1f};  ExtT [C]={:.2f};  ModT={:.2f};  CavT={:.2f}'.format(disDate,np.average(solverInputs['Q_c']),exteriorAirTempForTS,avgModAirTemp,avgCavityAirTemp))
         #print '    DNI = {:.2f};  DHI = {:.2f};  EPC = {:.2f}'.format(dniForTS,dhiForTS,facadeData['epc'][index][ts-startStep])
         # co-simulation variables
         # init['interiorAirTemp']
@@ -557,7 +566,7 @@ if __name__ == "__main__":
   init = { 
   'numProcs':1,
   'tilt':tilt,
-  'startDay':0,
+  'startDay':200,
   'days':5,
   'directory':'Chicago'+str(tilt),
   'TMY':'data/TMY/USA_CO_Golden.epw',
@@ -583,9 +592,9 @@ if __name__ == "__main__":
   'airFlowRate':2.0*0.16*1.200,
   # data for each facade (one number for each facade)
   'facadeDataNames':['epc','glaze','aoi','yaw','pitch',
-               'shade','dni','thermal','elect'],
+               'shade','shadedVector','dni','thermal','elect'],
   # data on modules (a number for each module)
-  'moduleDataNames':['DNI','DNIatModule','DHI','DHIatModule', 'Glazing', \
+  'moduleDataNames':['DNI','DNIafterExtGlass','DNIatModule','DHI','DHIafterExtGlass','DHIatModule', 'Glazing', \
                      'waterModuleT','waterTubeT','inletAirTemp','externalAirT',
                     'receiverT','thermal','electrical'],
   # data per direction

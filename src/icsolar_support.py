@@ -111,24 +111,30 @@ output(s):
 def getRadiativeGainAtTime(time, geometry, DNI, DHI):
   return getRadiativeGain(getSunPosition(time),geometry,DNI,DHI)
 
-def getRadiativeGain(sunPositions, geometry, DNI, DHI):
-  Egen = 0.105*DNI
-  Qgen = 0.13*DNI
+def getRadiativeGain(sunPositions, geometry, dniAfterShade, DNI, DHI):
+  Egen = 0.105*dniAfterShade
+  Qgen = 0.13*dniAfterShade
   (pitch, yaw) = solar.getArrayAngle(sunPositions,geometry)
 
-  glazing = solar.getGlazingTransmitted(sunPositions,geometry,2)
-  # Calculate the DNI to interior using gap and double pane 
-  # glazing transmittance
-  DNItoInterior = DNI * glazing * getGapTransmittance(yaw, pitch)
-  # DNI that is not converted to electricity energy and thermal energy
+  # transmittance of double pane interior window
+  # will need to update this function with window properties from EP
+  intGlazing = solar.getGlazingTransmitted(sunPositions,geometry,2)
+
+  # Calculates a fraction of area not occupied by a module face
+  # In other words, 0.1 means 10% of the area is open for light to 
+  # freely pass by the module. Geometric gap calculation
+  gapTranFactor = getGapTransmittance(yaw, pitch)
+  
+  # Calculate the DNI and DHI to the building interior using 
+  # geometric gap calculations and double pane glazing transmittance
+  DNItoInterior = DNI * intGlazing * gapTranFactor
+  # Calculate the DHI to interior 
+  DHItoInterior = DHI * intGlazing * gapTranFactor
+
+
+  # DNI that is not converted to electrical energy and thermal energy
   # or transmitted to interior is captured as heat inside the cavity
   DNIheat = DNI - Egen - Qgen - DNItoInterior
-
-  # Calculate the DHI to interior 
-  # Assumption: Diffuse radiation is not intercepted by ICSolar like direct
-  # because it comes at different angles, allowing passage 
-  # through transparent materials
-  DHItoInterior = DHI * glazing
   # DHI that is not transmitted to the interior is captured at heat inside cavity
   DHIheat = DHI - DHItoInterior
 
