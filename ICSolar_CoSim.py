@@ -228,15 +228,14 @@ def solve(problemInputs,solverInputs):
           for name in g.data:
             g.data[name] = np.zeros(g.nY)
           # continue # commented out so that the model still provides values for all timestep
-        # energy per cell in the middle module
-        facadeData['epc'][index][ts-startStep] = 0.866*625.5*0.0001*g.data['DNIatModule'][int(g.nY/2)]
 
         shadedVector = shading.applySunlitFraction(sunlit,g,averaged)
+        facadeData['shadedVector'] = shadedVector
 
+        # solar energy after shading from other ICSF arrays 
         g.data['DNI'] = dniForTS*shadedVector
         g.data['DHI'] = dhiForTS*shadedVector
         g.data['Glazing'] = glaze*shadedVector
-        facadeData['shadedVector'] = shadedVector
 
         # solar energy after the exterior glazing
         g.data['DNIafterExtGlass'] = g.data['DNI']*glaze
@@ -246,11 +245,12 @@ def solve(problemInputs,solverInputs):
         g.data['DNIatModule'] = g.data['DNIafterExtGlass']*shade
         g.data['DHIatModule'] = g.data['DHIafterExtGlass']*shade
 
+        # energy per cell in the middle module
+        facadeData['epc'][index][ts-startStep] = 0.866*625.5*0.0001*g.data['DNIatModule'][int(g.nY/2)]
+
         # solverInputs['Q_w'] = 0.024801*(0.66)*1e-3*g.data['DNIatModule']
-        solverInputs['Q_d'] = 0.866*625.5*0.0001*g.data['DNIatModule']*(1.-solverInputs['eta'])
         solverInputs['Q_a'] = np.zeros(g.nY)
         # solverInputs['Q_c'] = np.zeros(g.nY)
-        (Q_c,Q_I) = support.getRadiativeGain(sunPosition,g,g.data['DNIafterExtGlass'],g.data['DNIafterExtGlass'],g.data['DHIafterExtGlass'])
         solverInputs['Q_c'] = Q_c*icsolar.moduleHeight*icsolar.moduleWidth
         solverInputs['numModules'] = g.nY
         
@@ -275,8 +275,6 @@ def solve(problemInputs,solverInputs):
         avgModAirTemp = np.average(results['airModule'])
         if tsToHour%1==0.0:
           disDate = timedelta(seconds=int(tsToSec))
-          print ('{};  Q_c={:.1f};  ExtT [C]={:.2f};  ModT={:.2f};  CavT={:.2f}'.format(disDate,np.average(solverInputs['Q_c']),exteriorAirTempForTS,avgModAirTemp,avgCavityAirTemp))
-        #print '    DNI = {:.2f};  DHI = {:.2f};  EPC = {:.2f}'.format(dniForTS,dhiForTS,facadeData['epc'][index][ts-startStep])
         # co-simulation variables
         # init['interiorAirTemp']
         # init['exteriorAirTemp'] # can be pulled from the weather file
@@ -567,7 +565,6 @@ if __name__ == "__main__":
   'numProcs':1,
   'tilt':tilt,
   'startDay':200,
-  'days':5,
   'directory':'Chicago'+str(tilt),
   'TMY':'data/TMY/USA_CO_Golden.epw',
   'geomfile':'data/geometry/whole-building-single.txt',

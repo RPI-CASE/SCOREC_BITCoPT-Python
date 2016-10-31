@@ -70,10 +70,12 @@ def heatConvDevice(B,N,P):
     *B.p['mdot']*B.P['Cp'](B)*(B['T']-N['T'])}
 
 """
-getGapTransmittance:
+getGapTransmittance:  Fraction of system area that is open for radiation to 
+                      transmit through without being intercepted by any 
+                      ICSF modules
 
 input(s):             yaw, pitch
-output(s):
+output(s):            fraction
 """
 def getGapTransmittance(yaw, pitch):
   yaw *= 180.0/pi 
@@ -96,8 +98,8 @@ radiativeGain:  Cavity Radiation Gain
                 and thermal generation as inputs and solve
                 but it wouldn't be too innacurate to just assume 
                 constant conversion percentages
-                Egen 10.5% conversion of DNI (W/m2) to Egen (W/m2)
-                Qgen 13.0% conversion of DNI (W/m2) to Qgen (W/m2)
+                11.3% conversion of DNI on building facade (W/m2) to Egen (W/m2)
+                15.3% conversion of DNI on building facade (W/m2) to Qgen (W/m2)
                 Could use the below equations for better accuracy 
                 but they account for array of modules
                 output of this should be W/m2 for now but can change 
@@ -105,15 +107,13 @@ radiativeGain:  Cavity Radiation Gain
                 Egen=((55)*-2.28e-4+0.1838)*DNIafterExt/1000,
                 Qgen=0.024801*(0.66)*1e-3*DNIafterExt
 
-input(s):   
-output(s):  
+input(s):       position of sun, geometry, dni on facade, dhi on facade, 
+                dni after exterior glazing, dhi after exterior glazing
+output(s):      Solar heat gain to cavity, Solar heat gain to interior
 """
-def getRadiativeGainAtTime(time, geometry, DNI, DHI):
-  return getRadiativeGain(getSunPosition(time),geometry,DNI,DHI)
+def getRadiativeGainAtTime(time, geometry, DNI, DHI, DNIafterExt, DHIafterExt):
+  return getRadiativeGain(getSunPosition(time),geometry,DNI,DHI,DNIafterExt,DHIafterExt)
 
-def getRadiativeGain(sunPositions, geometry, dniAfterShade, DNI, DHI):
-  Egen = 0.105*dniAfterShade
-  Qgen = 0.13*dniAfterShade
   (pitch, yaw) = solar.getArrayAngle(sunPositions,geometry)
 
   # transmittance of double pane interior window
@@ -127,23 +127,19 @@ def getRadiativeGain(sunPositions, geometry, dniAfterShade, DNI, DHI):
   
   # Calculate the DNI and DHI to the building interior using 
   # geometric gap calculations and double pane glazing transmittance
-  DNItoInterior = DNI * intGlazing * gapTranFactor
   # Calculate the DHI to interior 
-  DHItoInterior = DHI * intGlazing * gapTranFactor
 
 
   # DNI that is not converted to electrical energy and thermal energy
   # or transmitted to interior is captured as heat inside the cavity
-  DNIheat = DNI - Egen - Qgen - DNItoInterior
   # DHI that is not transmitted to the interior is captured at heat inside cavity
-  DHIheat = DHI - DHItoInterior
 
   # Radiative heat gain to add to the cavity air temperature
-  CavRadHeatGain = DNIheat + DHIheat
+  cavRadHeatGain = dniHeat + dhiHeat
   # Radiative heat gain to add to the interior heat transfer
-  IntRadHeatGain = DNItoInterior + DHItoInterior
+  intRadHeatGain = dniToInterior + dhiToInterior
 
   # Units are W/m2, will need to multiply by 
   # surface area to determine the heat added to a specific volume.
-  return (CavRadHeatGain, IntRadHeatGain)
+  return (cavRadHeatGain, intRadHeatGain)
 
