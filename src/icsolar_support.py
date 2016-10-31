@@ -114,6 +114,9 @@ output(s):      Solar heat gain to cavity, Solar heat gain to interior
 def getRadiativeGainAtTime(time, geometry, DNI, DHI, DNIafterExt, DHIafterExt):
   return getRadiativeGain(getSunPosition(time),geometry,DNI,DHI,DNIafterExt,DHIafterExt)
 
+def getRadiativeGain(sunPositions, geometry, gdata, facadeData):
+  Egen = 0.113*gdata['DNI'] # efficiency is based on an average generation per m2 on facade over the year
+  Qgen = 0.153*gdata['DNI']
   (pitch, yaw) = solar.getArrayAngle(sunPositions,geometry)
 
   # transmittance of double pane interior window
@@ -127,12 +130,16 @@ def getRadiativeGainAtTime(time, geometry, DNI, DHI, DNIafterExt, DHIafterExt):
   
   # Calculate the DNI and DHI to the building interior using 
   # geometric gap calculations and double pane glazing transmittance
+  dniToInterior = gdata['DNIafterExtGlass'] * gapTranFactor * intGlazing
   # Calculate the DHI to interior 
+  dhiToInterior = gdata['DHIafterExtGlass'] * gapTranFactor * intGlazing
 
 
   # DNI that is not converted to electrical energy and thermal energy
   # or transmitted to interior is captured as heat inside the cavity
+  dniHeat = gdata['DNIafterExtGlass'] - Egen - Qgen - dniToInterior
   # DHI that is not transmitted to the interior is captured at heat inside cavity
+  dhiHeat = gdata['DHIafterExtGlass'] - dhiToInterior
 
   # Radiative heat gain to add to the cavity air temperature
   cavRadHeatGain = dniHeat + dhiHeat

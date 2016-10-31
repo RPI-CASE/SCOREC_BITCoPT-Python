@@ -249,8 +249,11 @@ def solve(problemInputs,solverInputs):
         facadeData['epc'][index][ts-startStep] = 0.866*625.5*0.0001*g.data['DNIatModule'][int(g.nY/2)]
 
         # solverInputs['Q_w'] = 0.024801*(0.66)*1e-3*g.data['DNIatModule']
+        solverInputs['Q_d'] = solverInputs['lensEfficiency']*625.5*0.0001*g.data['DNIatModule']*(1.-solverInputs['eta'])
         solverInputs['Q_a'] = np.zeros(g.nY)
+        # solverInputs['Q_a'] = (1-solverInputs['lensEfficiency'])*625.5*0.0001*g.data['DNIatModule']
         # solverInputs['Q_c'] = np.zeros(g.nY)
+        (Q_c,Q_I) = support.getRadiativeGain(sunPosition,g,g.data,facadeData)
         solverInputs['Q_c'] = Q_c*icsolar.moduleHeight*icsolar.moduleWidth
         solverInputs['numModules'] = g.nY
         
@@ -275,6 +278,8 @@ def solve(problemInputs,solverInputs):
         avgModAirTemp = np.average(results['airModule'])
         if tsToHour%1==0.0:
           disDate = timedelta(seconds=int(tsToSec))
+          print ('{};  Q_c={:.1f}; Q_a={:.1f}; ExtT [C]={:.1f}; ModT={:.1f}; CavT={:.1f}'.format(disDate,np.average(solverInputs['Q_c']),np.average(solverInputs['Q_a']),exteriorAirTempForTS,avgModAirTemp,avgCavityAirTemp))
+          print ('                     Alt={:.0f};  Azi={:.0f};  DNI={:.0f};  DHI={:.0f};  EPC={:.1f}'.format(sunPosition['altitude']*180/np.pi,sunPosition['azimuth']*180/np.pi,dniForTS,dhiForTS,facadeData['epc'][index][ts-startStep]))
         # co-simulation variables
         # init['interiorAirTemp']
         # init['exteriorAirTemp'] # can be pulled from the weather file
@@ -565,6 +570,7 @@ if __name__ == "__main__":
   'numProcs':1,
   'tilt':tilt,
   'startDay':200,
+  'days':3,
   'directory':'Chicago'+str(tilt),
   'TMY':'data/TMY/USA_CO_Golden.epw',
   'geomfile':'data/geometry/whole-building-single.txt',
@@ -579,6 +585,7 @@ if __name__ == "__main__":
   # these are run specific variables
   solverInputs = {
   'dt':24./init['stepsPerDay']*3600.,
+  'lensEfficiency':0.886,
   'eta':0.33, # electrical efficiency, constant for now.
   'length':icsolar.moduleHeight,
   'inletWaterTemp':20.0,
