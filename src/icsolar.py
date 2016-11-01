@@ -138,10 +138,6 @@ def solve(init):
     # part of the flux
     waterModule[i].addFlux(f.Flux(waterTube[i],heatConvDevice,{'dt':dt}))
 
-    # Q_a from receiver heat loss
-    if('Q_a' in init.keys()):
-      airModule[i].addSource(s.Source(s.constant,{'T':-init['Q_a'][i]}))
-
     # Q_c (heat to cavity air) from DHI and DNI
     if('Q_c' in init.keys()):
       airModule[i].addSource(s.Source(s.constant,{'T':-init['Q_c'][i]}))

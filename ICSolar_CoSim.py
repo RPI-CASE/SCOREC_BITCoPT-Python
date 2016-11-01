@@ -253,9 +253,7 @@ def solve(init,problemInputs,solverInputs):
         
         # solverInputs['Q_w'] = 0.024801*(0.66)*1e-3*g.data['DNIatModule']
         solverInputs['Q_d'] = conversionFactor*g.data['DNIatModule']*(1.-solverInputs['eta'])
-        solverInputs['Q_a'] = np.zeros(g.nY)
-        # solverInputs['Q_a'] = (1-solverInputs['lensEfficiency'])*625.5*0.0001*g.data['DNIatModule']
-        # solverInputs['Q_c'] = np.zeros(g.nY)
+        
         radGain = support.getRadiativeGain(sunPosition,g,solverInputs['lensEfficiency'])
         solverInputs['Q_c'] = radGain['cavRadHeatGain']*icsolar.moduleHeight*icsolar.moduleWidth
         solverInputs['numModules'] = g.nY
@@ -279,6 +277,7 @@ def solve(init,problemInputs,solverInputs):
 
         avgCavityAirTemp = np.average(results['airTube'])
         avgModAirTemp = np.average(results['airModule'])
+
         # co-simulation variables
         # init['interiorAirTemp']
         # init['exteriorAirTemp'] # can be pulled from the weather file
