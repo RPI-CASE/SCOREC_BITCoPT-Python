@@ -277,6 +277,7 @@ def solve(init,problemInputs,solverInputs):
 
         avgCavityAirTemp = np.average(results['airTube'])
         avgModAirTemp = np.average(results['airModule'])
+        intRadHeatGain = np.average(radGain['intRadHeatGain'])
 
         # co-simulation variables
         # init['interiorAirTemp']
@@ -312,13 +313,12 @@ def solve(init,problemInputs,solverInputs):
         if init['printToCMD'] == True:
           if tsToHour%1==0.0 and np.average(g.data['DNI']) > 0:
             disDate = timedelta(seconds=int(tsToSec))
-            print ('{};  Q_c={:.1f}; Q_a={:.1f}; ExtT [C]={:.1f}; ModT={:.1f}; CavT={:.1f}'.format(disDate,np.average(solverInputs['Q_c']),np.average(solverInputs['Q_a']),exteriorAirTempForTS,avgModAirTemp,avgCavityAirTemp))
+            print ('{};  Q_c={:.1f}; ExtT [C]={:.1f}; ModT={:.1f}; CavT={:.1f}'.format(disDate,np.average(solverInputs['Q_c']),exteriorAirTempForTS,avgModAirTemp,avgCavityAirTemp))
             print ('                     Alt={:.0f};  Azi={:.0f};  DNI={:.0f};  DHI={:.0f};  EPC={:.1f}'.format(sunPosition['altitude']*180/np.pi,sunPosition['azimuth']*180/np.pi,dniForTS,dhiForTS,facadeData['epc'][index][ts-startStep]))
             print ('                     dniAfterExtGlass={:.0f};  dhiAfterExtGlass={:.0f}'.format(np.average(g.data['DNIafterExtGlass']),np.average(g.data['DHIafterExtGlass'])))
             print ('                     dniAtMod={:.0f};  dniToInterior={:.0f};  dhiToInterior={:.0f}'.format(np.average(g.data['DNIatModule']),np.average(radGain['dniToInterior']),np.average(radGain['dhiToInterior'])))
             print ('                     radEgen={:.0f};  radQgen={:.0f}'.format(np.average(radGain['Egen']),np.average(radGain['Qgen'])))
             print ('                     electData={:.0f};  thermalData={:.0f}'.format(electData*1000,thermalData*1000))
-
 
     # done with the step        
     previousDayTime = daytime
@@ -332,6 +332,7 @@ def solve(init,problemInputs,solverInputs):
 
     # co-simulation
     fmuModel.set('SouthCavAirTemp',avgCavityAirTemp) # Will need to get smarter with this when working with multiple windows
+    fmuModel.set('SouthWindowSolarInside',intRadHeatGain)
     cosimRes = fmuModel.do_step(current_t=tsToSec,step_size=dt, new_step=True)
     
     if(daytime and problemInputs['writeVTKFiles']):
@@ -580,12 +581,12 @@ if __name__ == "__main__":
   init = { 
   'numProcs':1,
   'tilt':tilt,
-  'startDay':200,
-  'days':3,
-  'directory':'Chicago'+str(tilt),
+  'startDay':350,
+  'days':5,
+  'directory':'GoldenCO'+str(tilt),
   'TMY':'data/TMY/USA_CO_Golden.epw',
   'geomfile':'data/geometry/whole-building-single.txt',
-  'fmuModelName':'./data/fmu/SimpleCavity_fmu_export.fmu',
+  'fmuModelName':'./data/fmu/RadHeatGain_fmu_export.fmu',
   'useSunlitFraction':True,
   'writeDataFiles':True,
   'writeVTKFiles':True,
