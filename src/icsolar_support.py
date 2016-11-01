@@ -92,14 +92,15 @@ def getGapTransmittance(yaw, pitch):
 """
 radiativeGain:  Cavity Radiation Gain
                 The Egen and Qgen constants are expected efficiency 
-                based on W/m2 of DNI after the glazing and optical losses.
+                based on W/m2 of DNI after the glazing, shading 
+                and optical losses.
 
                 It would be better to use the simulated electrical 
                 and thermal generation as inputs and solve
                 but it wouldn't be too innacurate to just assume 
                 constant conversion percentages
-                11.3% conversion of DNI on building facade (W/m2) to Egen (W/m2)
-                15.3% conversion of DNI on building facade (W/m2) to Qgen (W/m2)
+                20% conversion of DNI at the receiver to Egen (W/m2)
+                28% conversion of DNI at the receiver to Qgen (W/m2)
                 Could use the below equations for better accuracy 
                 but they account for array of modules
                 output of this should be W/m2 for now but can change 
@@ -107,16 +108,15 @@ radiativeGain:  Cavity Radiation Gain
                 Egen=((55)*-2.28e-4+0.1838)*DNIafterExt/1000,
                 Qgen=0.024801*(0.66)*1e-3*DNIafterExt
 
-input(s):       position of sun, geometry, dni on facade, dhi on facade, 
-                dni after exterior glazing, dhi after exterior glazing
+input(s):       position of sun, geometry (and its data), and lens efficiency
 output(s):      Solar heat gain to cavity, Solar heat gain to interior
 """
-def getRadiativeGainAtTime(time, geometry, DNI, DHI, DNIafterExt, DHIafterExt):
-  return getRadiativeGain(getSunPosition(time),geometry,DNI,DHI,DNIafterExt,DHIafterExt)
+def getRadiativeGainAtTime(time, geometry, lensEfficiency):
+  return getRadiativeGain(getSunPosition(time),geometry,lensEfficiency)
 
-def getRadiativeGain(sunPositions, geometry, gdata, facadeData):
-  Egen = 0.113*gdata['DNI'] # efficiency is based on an average generation per m2 on facade over the year
-  Qgen = 0.153*gdata['DNI']
+def getRadiativeGain(sunPositions, geometry, lensEfficiency):
+  Egen = geometry.data['DNIatModule']*lensEfficiency*0.2
+  Qgen = geometry.data['DNIatModule']*lensEfficiency*0.28
   (pitch, yaw) = solar.getArrayAngle(sunPositions,geometry)
 
   # transmittance of double pane interior window
@@ -130,16 +130,15 @@ def getRadiativeGain(sunPositions, geometry, gdata, facadeData):
   
   # Calculate the DNI and DHI to the building interior using 
   # geometric gap calculations and double pane glazing transmittance
-  dniToInterior = gdata['DNIafterExtGlass'] * gapTranFactor * intGlazing
+  dniToInterior = geometry.data['DNIafterExtGlass'] * gapTranFactor * intGlazing
   # Calculate the DHI to interior 
-  dhiToInterior = gdata['DHIafterExtGlass'] * gapTranFactor * intGlazing
-
+  dhiToInterior = geometry.data['DHIafterExtGlass'] * gapTranFactor * intGlazing
 
   # DNI that is not converted to electrical energy and thermal energy
   # or transmitted to interior is captured as heat inside the cavity
-  dniHeat = gdata['DNIafterExtGlass'] - Egen - Qgen - dniToInterior
+  dniHeat = geometry.data['DNIafterExtGlass'] - Egen - Qgen - dniToInterior
   # DHI that is not transmitted to the interior is captured at heat inside cavity
-  dhiHeat = gdata['DHIafterExtGlass'] - dhiToInterior
+  dhiHeat = geometry.data['DHIafterExtGlass'] - dhiToInterior
 
   # Radiative heat gain to add to the cavity air temperature
   cavRadHeatGain = dniHeat + dhiHeat
@@ -148,5 +147,7 @@ def getRadiativeGain(sunPositions, geometry, gdata, facadeData):
 
   # Units are W/m2, will need to multiply by 
   # surface area to determine the heat added to a specific volume.
-  return (cavRadHeatGain, intRadHeatGain)
+  return {'cavRadHeatGain':cavRadHeatGain, 'intRadHeatGain':intRadHeatGain,\
+    'dniToInterior':dniToInterior,'dhiToInterior':dhiToInterior,\
+    'dniHeat':dniHeat,'dhiHeat':dhiHeat,'Egen':Egen,'Qgen':Qgen}
 

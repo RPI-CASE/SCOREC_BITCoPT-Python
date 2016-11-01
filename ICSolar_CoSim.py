@@ -66,7 +66,7 @@ solving at each timestep, and keeping track of data
 This is where data gets created and stored
 
 """
-def solve(problemInputs,solverInputs):
+def solve(init,problemInputs,solverInputs):
 
   ############################################### take data from problemInputs
   geometry = problemInputs['geometry']
@@ -96,7 +96,7 @@ def solve(problemInputs,solverInputs):
   # fill in load code here 
 
   # load FMU
-  fmuModel = load_fmu('./data/fmu/'+problemInputs['fmuModelName'])
+  fmuModel = load_fmu(init['fmuModelName'])
 
   # load options
   opts = fmuModel.simulate_options()
@@ -247,14 +247,14 @@ def solve(problemInputs,solverInputs):
 
         # energy per cell in the middle module
         facadeData['epc'][index][ts-startStep] = 0.866*625.5*0.0001*g.data['DNIatModule'][int(g.nY/2)]
-
+        
         # solverInputs['Q_w'] = 0.024801*(0.66)*1e-3*g.data['DNIatModule']
         solverInputs['Q_d'] = solverInputs['lensEfficiency']*625.5*0.0001*g.data['DNIatModule']*(1.-solverInputs['eta'])
         solverInputs['Q_a'] = np.zeros(g.nY)
         # solverInputs['Q_a'] = (1-solverInputs['lensEfficiency'])*625.5*0.0001*g.data['DNIatModule']
         # solverInputs['Q_c'] = np.zeros(g.nY)
-        (Q_c,Q_I) = support.getRadiativeGain(sunPosition,g,g.data,facadeData)
-        solverInputs['Q_c'] = Q_c*icsolar.moduleHeight*icsolar.moduleWidth
+        radGain = support.getRadiativeGain(sunPosition,g,solverInputs['lensEfficiency'])
+        solverInputs['Q_c'] = radGain['cavRadHeatGain']*icsolar.moduleHeight*icsolar.moduleWidth
         solverInputs['numModules'] = g.nY
         
         # set up previous temperature
@@ -276,21 +276,21 @@ def solve(problemInputs,solverInputs):
 
         avgCavityAirTemp = np.average(results['airTube'])
         avgModAirTemp = np.average(results['airModule'])
-        if tsToHour%1==0.0:
-          disDate = timedelta(seconds=int(tsToSec))
-          print ('{};  Q_c={:.1f}; Q_a={:.1f}; ExtT [C]={:.1f}; ModT={:.1f}; CavT={:.1f}'.format(disDate,np.average(solverInputs['Q_c']),np.average(solverInputs['Q_a']),exteriorAirTempForTS,avgModAirTemp,avgCavityAirTemp))
-          print ('                     Alt={:.0f};  Azi={:.0f};  DNI={:.0f};  DHI={:.0f};  EPC={:.1f}'.format(sunPosition['altitude']*180/np.pi,sunPosition['azimuth']*180/np.pi,dniForTS,dhiForTS,facadeData['epc'][index][ts-startStep]))
         # co-simulation variables
         # init['interiorAirTemp']
         # init['exteriorAirTemp'] # can be pulled from the weather file
         # results['airModule'] and results['airTube']
 
         # electrical calculations
-        electData = np.sum(solverInputs['eta'] \
-          *1e-3*0.866*625.5*0.0001*g.data['DNIatModule'])*g.nX
+        Egen = solverInputs['eta']*solverInputs['lensEfficiency']\
+          *625.5*0.0001*g.data['DNIatModule'] # Watts (W)
+        electData = np.sum(solverInputs['eta']*1e-3\
+          *solverInputs['lensEfficiency']*625.5*0.0001\
+          *g.data['DNIatModule'])*g.nX # kilowatts (kW)
 
         directionData['elect'][g.dir][ts-startStep] += electData*(1+len(matches))
         facadeData['elect'][index][ts-startStep] = electData
+
 
         # thermal calculations
         thermalData = np.sum(solverInputs['waterFlowRate']*4.218 \
@@ -307,6 +307,18 @@ def solve(problemInputs,solverInputs):
         for name in ['thermal','elect','epc']:
           for match in matches:
             facadeData[name][geometry.index(match)] = facadeData[name][index]
+
+
+        if init['printToCMD'] == True:
+          if tsToHour%1==0.0 and np.average(g.data['DNI']) > 0:
+            disDate = timedelta(seconds=int(tsToSec))
+            print ('{};  Q_c={:.1f}; Q_a={:.1f}; ExtT [C]={:.1f}; ModT={:.1f}; CavT={:.1f}'.format(disDate,np.average(solverInputs['Q_c']),np.average(solverInputs['Q_a']),exteriorAirTempForTS,avgModAirTemp,avgCavityAirTemp))
+            print ('                     Alt={:.0f};  Azi={:.0f};  DNI={:.0f};  DHI={:.0f};  EPC={:.1f}'.format(sunPosition['altitude']*180/np.pi,sunPosition['azimuth']*180/np.pi,dniForTS,dhiForTS,facadeData['epc'][index][ts-startStep]))
+            print ('                     dniAfterExtGlass={:.0f};  dhiAfterExtGlass={:.0f}'.format(np.average(g.data['DNIafterExtGlass']),np.average(g.data['DHIafterExtGlass'])))
+            print ('                     dniAtMod={:.0f};  dniToInterior={:.0f};  dhiToInterior={:.0f}'.format(np.average(g.data['DNIatModule']),np.average(radGain['dniToInterior']),np.average(radGain['dhiToInterior'])))
+            print ('                     radEgen={:.0f};  radQgen={:.0f}'.format(np.average(radGain['Egen']),np.average(radGain['Qgen'])))
+            print ('                     electData={:.0f};  thermalData={:.0f}'.format(electData*1000,thermalData*1000))
+
 
     # done with the step        
     previousDayTime = daytime
@@ -328,7 +340,7 @@ def solve(problemInputs,solverInputs):
   # terminate co-simulation
   fmuModel.terminate()
   
-  print "runtime for days",startDay,"to",startDay+days-1,":",'%.2f' % (cputime.time()-clockStart)
+  print "runtime for day",startDay,"to end of day",startDay+days-1,":",'%.2f' % (cputime.time()-clockStart)
   return (directionData,facadeData)
 
 """
@@ -457,12 +469,11 @@ def run(init,solverInputs):
     'exteriorAirTemp':exteriorAirTemp[stepRange],
     'DHI':DHI[stepRange],
     'stepsPerDay':init['stepsPerDay'],
-    'fmuModelName':init['fmuModelName']
     }
     problemInputs.append(inputDict)
 
   # results = solve(problemInputs[0],solverInputs)
-  results = Parallel(n_jobs = init['numProcs'])(delayed(solve)(problemInputs[i],solverInputs) for i in range(init['numProcs']))
+  results = Parallel(n_jobs = init['numProcs'])(delayed(solve)(init,problemInputs[i],solverInputs) for i in range(init['numProcs']))
   print data['city'],'final runtime is','%.2f' % (cputime.time()-clockStart)
 
   ############################################### collapse results
@@ -470,7 +481,7 @@ def run(init,solverInputs):
   for i in range(init['numProcs']):
     (start,end) = procSplit[i]
     resultRange = slice((start-init['startDay'])*init['stepsPerDay'],(end-init['startDay'])*init['stepsPerDay'])
-    print "resultRange:",resultRange
+    # print "resultRange:",resultRange
     for b in bins:
       for name in solverInputs['directionDataNames']:
         directionData[name][b][resultRange] = results[i][0][name][b]
@@ -574,10 +585,11 @@ if __name__ == "__main__":
   'directory':'Chicago'+str(tilt),
   'TMY':'data/TMY/USA_CO_Golden.epw',
   'geomfile':'data/geometry/whole-building-single.txt',
-  'fmuModelName':'SimpleCavity_fmu_export.fmu',
+  'fmuModelName':'./data/fmu/SimpleCavity_fmu_export.fmu',
   'useSunlitFraction':True,
   'writeDataFiles':True,
   'writeVTKFiles':True,
+  'printToCMD':True,
   'stepsPerHour':stepsPerHour,
   'stepsPerDay':24*stepsPerHour,
   }
