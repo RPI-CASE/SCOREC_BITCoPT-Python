@@ -80,6 +80,9 @@ def solve(init,problemInputs,solverInputs):
 
   dt = solverInputs['dt']
 
+  conversionFactor = solverInputs['lensEfficiency']*\
+    solverInputs['concentrationRatio']*solverInputs['cellArea']
+
   stepsPerDay = problemInputs['stepsPerDay']
 
   interpTime = range(startDay*24,endDay*24) # hourly value from 0 to 8760, needs to be int
@@ -246,10 +249,10 @@ def solve(init,problemInputs,solverInputs):
         g.data['DHIatModule'] = g.data['DHIafterExtGlass']*shade
 
         # energy per cell in the middle module
-        facadeData['epc'][index][ts-startStep] = 0.866*625.5*0.0001*g.data['DNIatModule'][int(g.nY/2)]
+        facadeData['epc'][index][ts-startStep] = conversionFactor*g.data['DNIatModule'][int(g.nY/2)]
         
         # solverInputs['Q_w'] = 0.024801*(0.66)*1e-3*g.data['DNIatModule']
-        solverInputs['Q_d'] = solverInputs['lensEfficiency']*625.5*0.0001*g.data['DNIatModule']*(1.-solverInputs['eta'])
+        solverInputs['Q_d'] = conversionFactor*g.data['DNIatModule']*(1.-solverInputs['eta'])
         solverInputs['Q_a'] = np.zeros(g.nY)
         # solverInputs['Q_a'] = (1-solverInputs['lensEfficiency'])*625.5*0.0001*g.data['DNIatModule']
         # solverInputs['Q_c'] = np.zeros(g.nY)
@@ -282,11 +285,9 @@ def solve(init,problemInputs,solverInputs):
         # results['airModule'] and results['airTube']
 
         # electrical calculations
-        Egen = solverInputs['eta']*solverInputs['lensEfficiency']\
-          *625.5*0.0001*g.data['DNIatModule'] # Watts (W)
+        eGenPerMod = solverInputs['eta']*conversionFactor*g.data['DNIatModule'] # Watts (W)
         electData = np.sum(solverInputs['eta']*1e-3\
-          *solverInputs['lensEfficiency']*625.5*0.0001\
-          *g.data['DNIatModule'])*g.nX # kilowatts (kW)
+          *conversionFactor*g.data['DNIatModule'])*g.nX # kilowatts (kW)
 
         directionData['elect'][g.dir][ts-startStep] += electData*(1+len(matches))
         facadeData['elect'][index][ts-startStep] = electData
@@ -597,7 +598,9 @@ if __name__ == "__main__":
   # these are run specific variables
   solverInputs = {
   'dt':24./init['stepsPerDay']*3600.,
-  'lensEfficiency':0.886,
+  'lensEfficiency':0.886, # transmittance efficiency of the concentrating lens
+  'concentrationRatio':625.5, # concentration of DNI by the fresnel lens
+  'cellArea':0.0001, # area of the photovoltaic cell in m^2
   'eta':0.33, # electrical efficiency, constant for now.
   'length':icsolar.moduleHeight,
   'inletWaterTemp':20.0,
