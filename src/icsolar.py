@@ -35,6 +35,7 @@ from icsolar_support import *
 
 moduleHeight = 0.3429
 moduleWidth = 0.2794
+moduleArea = moduleHeight*moduleWidth
 
 _solverTime = 0.
 """
@@ -105,8 +106,10 @@ def solve(init):
     airTube[i].addFlux(f.Flux(waterTube[i],heatCondWaterAir,{'L':init['length']}))
 
     # interior and exterior heat transfer
-    airTube[i].addFlux(f.Flux(airInt,heatCondInterior,{'L':init['length']}))
-    airTube[i].addFlux(f.Flux(airExt,heatCondExterior,{'L':init['length']}))
+    # airTube[i].addFlux(f.Flux(airInt,heatCondInterior,{'L':init['length']}))
+    airTube[i].addFlux(f.Flux(airInt,overallHeatTransferInterior,{'A':moduleArea}))
+    # airTube[i].addFlux(f.Flux(airExt,heatCondExterior,{'L':init['length']}))
+    airTube[i].addFlux(f.Flux(airExt,overallHeatTransferExterior,{'A':moduleArea}))
 
   # now set the module regions
   for i in range(init['numModules']):

@@ -63,6 +63,28 @@ def heatCondInterior(B,N,P):
 def heatCondExterior(B,N,P):
   return {'T':(B['T']-N['T'])*0.5233*P['L']} # W/K
 
+def overallHeatTransferInterior(B,N,P):
+  # Film heat transfer coefficient (W/m2-K)
+  hInt = 4.201942 # From ASHRAE Fundamentals 2013 Chapter 26 Table 10
+  hCav = 4.201942 # Assuming an interior case for now 
+  # Glazing Resistance (m2-K/W) - might update with window from EnergyPlus
+  rGlazing = 0.003175/1.06*2 + 0.18 # Thickness/Conductivity - Two glass layers + Air
+  # Overall heat transfer coefficient (W/m2-K)
+  U = 1.0/(1.0/hCav+rGlazing+1.0/hInt) # W/m2-K
+  # Heat transfer (W) => U*A*(T1-T2) => W/m2-K * m2 * K
+  return {'T':(B['T']-N['T'])*U*P['A']} # W
+def overallHeatTransferExterior(B,N,P):
+  # Film heat transfer coefficient (W/m2-K)
+  hExt = 22.7132 # From ASHRAE Fundamentals 2013 Chapter 26 Table 10
+  hCav = 4.201942 # Assuming an interior case for now 
+  # Glazing Resistance (m2-K/W)
+  rGlazing = 0.003175/1.06 # Thickness/Conductivity - One glass layer
+  # Overall heat transfer coefficient (W/m2-K)
+  U = 1.0/(1.0/hCav+rGlazing+1.0/hExt) # W/m2-K
+  # Heat transfer (W) => U*A*(T1-T2) => W/m2-K * m2 * K
+  return {'T':(B['T']-N['T'])*U*P['A']} # W
+
+
 def heatConv(B,N,P):
   return {'T':B.p['mdot']*B.P['Cp'](B)*(B['T']-N['T'])}
 def heatConvDevice(B,N,P):
@@ -129,7 +151,9 @@ def getRadiativeGain(sunPositions, geometry, lensEfficiency):
   gapTranFactor = getGapTransmittance(yaw, pitch)
   
   # Calculate the DNI and DHI to the building interior using 
-  # geometric gap calculations and double pane glazing transmittance
+  # geometric gap calculations and double pane glazing transmittance.
+  # Can improve this calculation with SHGC calculations later, see page 276 
+  # of the EnergyPlus Engineering Reference Manual.
   dniToInterior = geometry.data['DNIafterExtGlass'] * gapTranFactor * intGlazing
   # Calculate the DHI to interior 
   dhiToInterior = geometry.data['DHIafterExtGlass'] * gapTranFactor * intGlazing
