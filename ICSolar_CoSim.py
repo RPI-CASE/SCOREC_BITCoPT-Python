@@ -586,7 +586,7 @@ if __name__ == "__main__":
   'directory':'GoldenCO'+str(tilt),
   'TMY':'data/TMY/USA_CO_Golden.epw',
   'geomfile':'data/geometry/whole-building-single.txt',
-  'fmuModelName':'./data/fmu/RadHeatGain_fmu_export.fmu',
+  'fmuModelName':'./data/fmu/20161110_AddingGenerator_fmu_export.fmu',
   'useSunlitFraction':True,
   'writeDataFiles':True,
   'writeVTKFiles':True,
