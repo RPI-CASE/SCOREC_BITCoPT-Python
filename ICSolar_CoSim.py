@@ -333,6 +333,7 @@ def solve(init,problemInputs,solverInputs):
     # co-simulation
     fmuModel.set('SouthCavAirTemp',avgCavityAirTemp) # Will need to get smarter with this when working with multiple windows
     fmuModel.set('SouthWindowSolarInside',intRadHeatGain)
+    fmuModel.set('ICSFElectricGeneration',electData*1000.0)
     cosimRes = fmuModel.do_step(current_t=tsToSec,step_size=dt, new_step=True)
     
     if(daytime and problemInputs['writeVTKFiles']):
@@ -586,7 +587,7 @@ if __name__ == "__main__":
   'directory':'GoldenCO'+str(tilt),
   'TMY':'data/TMY/USA_CO_Golden.epw',
   'geomfile':'data/geometry/whole-building-single.txt',
-  'fmuModelName':'./data/fmu/20161110_AddingGenerator_fmu_export.fmu',
+  'fmuModelName':'./data/fmu/20161110_ICSFGenerator_fmu_export.fmu',
   'useSunlitFraction':True,
   'writeDataFiles':True,
   'writeVTKFiles':True,
