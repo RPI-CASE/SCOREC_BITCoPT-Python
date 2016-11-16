@@ -406,7 +406,7 @@ def run(init,solverInputs):
   solar.setLocation(data['lat'],data['lon'])
 
   # set up geometry
-  geometry = casegeom.readFile(init['geomfile'],"ICSolar",
+  geometry = casegeom.readNewFile(init['geomfile'],"ICSolar",
     init['useSunlitFraction'])
   geometry.computeBlockCounts(icsolar.moduleHeight,icsolar.moduleWidth)
 
@@ -576,18 +576,18 @@ if __name__ == "__main__":
     os.makedirs('Results')
 
   tilt = 0
-  stepsPerHour = 4
+  stepsPerHour = 6
 
   # these are general variables
   init = { 
-  'numProcs':1,
+  'numProcs':1, # Do not change this value for now
   'tilt':tilt,
   'startDay':350,
   'days':5,
-  'directory':'GoldenCO'+str(tilt),
-  'TMY':'data/TMY/USA_CO_Golden.epw',
-  'geomfile':'data/geometry/whole-building-single.txt',
-  'fmuModelName':'./data/fmu/20161110_ICSFGenerator_fmu_export.fmu',
+  'directory':'ChicagoMSI'+str(tilt),
+  'TMY':'data/TMY/USA_IL_Chicago.epw',
+  'geomfile':'data/geometry/MSI_South_ICSF.txt',
+  'fmuModelName':'./data/fmu/f_49_MSI_ModelForCoSim.fmu',
   'useSunlitFraction':True,
   'writeDataFiles':True,
   'writeVTKFiles':True,

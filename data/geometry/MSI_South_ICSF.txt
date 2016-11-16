@@ -1,0 +1,37 @@
+GlobalGeometryRules,
+  UpperLeftCorner,  !- Starting Vertex Position 
+  Counterclockwise,  !- Vertex Entry Direction 
+  Absolute,  !- Coordinate System 
+  World;  !- Daylighting Reference Point Coordinate System 
+
+BuildingSurface:Detailed,
+  F1_Living_South Wall,                   !- Name
+  Wall,                                   !- Surface Type
+  ASHRAE 90.1-2010 ExtWall SteelFrame ClimateZone alt-res 2-6, !- Construction Name
+  F1_Living Thermal Zone,                 !- Zone Name
+  Outdoors,                               !- Outside Boundary Condition
+  ,                                       !- Outside Boundary Condition Object
+  NoSun,                                  !- Sun Exposure
+  WindExposed,                            !- Wind Exposure
+  ,                                       !- View Factor to Ground
+  ,                                       !- Number of Vertices
+  1.62747, 1.516501313189, 3.657596027374, !- X,Y,Z Vertex 1 {m}
+  1.62747, 1.516501313189, 0,             !- X,Y,Z Vertex 2 {m}
+  5.04069421875, 0.734260688189, 0,       !- X,Y,Z Vertex 3 {m}
+  5.04069421875, 0.734260688189, 3.657596027374; !- X,Y,Z Vertex 4 {m}
+
+FenestrationSurface:Detailed,
+  F1_Living_South Window,                 !- Name
+  Window,                                 !- Surface Type
+  ASHRAE 90.1-2010 ExtWindow Metal ClimateZone 4-6, !- Construction Name
+  F1_Living_South Wall,                   !- Building Surface Name
+  ,                                       !- Outside Boundary Condition Object
+  ,                                       !- View Factor to Ground
+  ,                                       !- Shading Control Name
+  ,                                       !- Frame and Divider Name
+  ,                                       !- Multiplier
+  ,                                       !- Number of Vertices
+  1.652228132333, 1.510827259664, 3.505196027374, !- X,Y,Z Vertex 1 {m}
+  1.652228132333, 1.510827259664, 0.0254, !- X,Y,Z Vertex 2 {m}
+  5.015936086417, 0.739934741713995, 0.0254, !- X,Y,Z Vertex 3 {m}
+  5.015936086417, 0.739934741713995, 3.505196027374; !- X,Y,Z Vertex 4 {m}

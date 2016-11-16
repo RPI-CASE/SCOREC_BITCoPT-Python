@@ -108,7 +108,7 @@ def readNewFile(filename,name,useSunlit = True):
     # ignore all surfaces not named "Wall"
     if surface_type != 'Wall':
       continue
-    coords = [[a[:-2] for a in c.split(' ')[0:3]] for c in surface[-4:]]
+    coords = [[a[:-1] for a in c.split(' ')[0:3]] for c in surface[-4:]]
     coords = [coords[(i + coord_offset) % 4] for i in range(len(coords))]
     coords = [np.array(coord,float) for coord in coords]
     geom = g.Geometry(coords,'wall')
@@ -120,7 +120,7 @@ def readNewFile(filename,name,useSunlit = True):
     name = surface[1].split(',')[0]
     surface_type = surface[2].split(',')[0]
     wall_name = surface[4].split(',')[0]
-    coords = [[a[:-2] for a in c.split(' ')[0:3]] for c in surface[-4:]]
+    coords = [[a[:-1] for a in c.split(' ')[0:3]] for c in surface[-4:]]
     coords = [coords[(i + coord_offset) % 4] for i in range(len(coords))]
     coords = [np.array(coord,float) for coord in coords]
     geom = g.Geometry(coords)
