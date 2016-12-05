@@ -311,10 +311,11 @@ def solve(init,problemInputs,solverInputs):
 
 
         if init['printToCMD'] == True:
-          if tsToHour%1==0.0 and np.average(g.data['DNI']) > 0:
+          if tsToHour%1.0==0.0 and np.average(g.data['DNI']) > 0:
             disDate = timedelta(seconds=int(tsToSec))
             print ('{};  Q_c={:.1f}; ExtT [C]={:.1f}; ModT={:.1f}; CavT={:.1f}'.format(disDate,np.average(solverInputs['Q_c']),exteriorAirTempForTS,avgModAirTemp,avgCavityAirTemp))
             print ('                     Alt={:.0f};  Azi={:.0f};  DNI={:.0f};  DHI={:.0f};  EPC={:.1f}'.format(sunPosition['altitude']*180/np.pi,sunPosition['azimuth']*180/np.pi,dniForTS,dhiForTS,facadeData['epc'][index][ts-startStep]))
+            print ('                     ShadeVector={:.0f};  Sunlit={:.0f}').format(np.average(shadedVector), np.average(sunlit))
             print ('                     dniAfterExtGlass={:.0f};  dhiAfterExtGlass={:.0f}'.format(np.average(g.data['DNIafterExtGlass']),np.average(g.data['DHIafterExtGlass'])))
             print ('                     dniAtMod={:.0f};  dniToInterior={:.0f};  dhiToInterior={:.0f}'.format(np.average(g.data['DNIatModule']),np.average(radGain['dniToInterior']),np.average(radGain['dhiToInterior'])))
             print ('                     radEgen={:.0f};  radQgen={:.0f}'.format(np.average(radGain['Egen']),np.average(radGain['Qgen'])))
@@ -406,8 +407,12 @@ def run(init,solverInputs):
   solar.setLocation(data['lat'],data['lon'])
 
   # set up geometry
-  geometry = casegeom.readNewFile(init['geomfile'],"ICSolar",
-    init['useSunlitFraction'])
+  if init['useIDFGeom'] == True:
+    geometry = casegeom.readNewFile(init['geomfile'],"ICSolar",
+      init['useSunlitFraction'])
+  else:
+    geometry = casegeom.readFile(init['geomfile'],"ICSolar",
+      init['useSunlitFraction'])
   geometry.computeBlockCounts(icsolar.moduleHeight,icsolar.moduleWidth)
 
   geometry.initializeData(solverInputs['moduleDataNames'])
@@ -582,11 +587,12 @@ if __name__ == "__main__":
   init = { 
   'numProcs':1, # Do not change this value for now
   'tilt':tilt,
-  'startDay':350,
-  'days':5,
+  'startDay':60,
+  'days':3,
   'directory':'ChicagoMSI'+str(tilt),
   'TMY':'data/TMY/USA_IL_Chicago.epw',
   'geomfile':'data/geometry/MSI_South_ICSF.txt',
+  'useIDFGeom':True,
   'fmuModelName':'./data/fmu/f_49_MSI_ModelForCoSim.fmu',
   'useSunlitFraction':True,
   'writeDataFiles':True,

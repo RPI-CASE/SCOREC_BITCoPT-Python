@@ -96,9 +96,6 @@ def readNewFile(filename,name,useSunlit = True):
   if starting_vertex_position == 'UpperLeftCorner':
     coord_offset = 2 # my starting corner is bottom right
 
-  if vertex_entry_direction == 'Counterclockwise':
-    pass # this is fine, its the same orientation I use
-
   building_surface_list = data['BuildingSurface:Detailed']
   walls = {}
   for surface in building_surface_list:
@@ -109,6 +106,8 @@ def readNewFile(filename,name,useSunlit = True):
     if surface_type != 'Wall':
       continue
     coords = [[a[:-1] for a in c.split(' ')[0:3]] for c in surface[-4:]]
+    if vertex_entry_direction == 'Counterclockwise':
+      coords.reverse()
     coords = [coords[(i + coord_offset) % 4] for i in range(len(coords))]
     coords = [np.array(coord,float) for coord in coords]
     geom = g.Geometry(coords,'wall')
@@ -121,6 +120,8 @@ def readNewFile(filename,name,useSunlit = True):
     surface_type = surface[2].split(',')[0]
     wall_name = surface[4].split(',')[0]
     coords = [[a[:-1] for a in c.split(' ')[0:3]] for c in surface[-4:]]
+    if vertex_entry_direction == 'Counterclockwise':
+      coords.reverse()
     coords = [coords[(i + coord_offset) % 4] for i in range(len(coords))]
     coords = [np.array(coord,float) for coord in coords]
     geom = g.Geometry(coords)
