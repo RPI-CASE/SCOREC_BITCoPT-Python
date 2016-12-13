@@ -1,0 +1,37 @@
+GlobalGeometryRules,
+  UpperLeftCorner,  !- Starting Vertex Position 
+  Counterclockwise,  !- Vertex Entry Direction 
+  Absolute,  !- Coordinate System 
+  World;  !- Daylighting Reference Point Coordinate System 
+
+BuildingSurface:Detailed,
+  Roof Wall,                   !- Name
+  Wall,                                   !- Surface Type
+  ASHRAE 90.1-2010 ExtWall SteelFrame ClimateZone alt-res 2-6, !- Construction Name
+  F1_Living Thermal Zone,                 !- Zone Name
+  Outdoors,                               !- Outside Boundary Condition
+  ,                                       !- Outside Boundary Condition Object
+  NoSun,                                  !- Sun Exposure
+  WindExposed,                            !- Wind Exposure
+  ,                                       !- View Factor to Ground
+  ,                                       !- Number of Vertices
+  -1.0, 13.0, 10.718796, !- X,Y,Z Vertex 1 {m}
+  -1.0, -1.0, 10.718796, !- X,Y,Z Vertex 2 {m}
+  10.0, -1.0, 10.718796, !- X,Y,Z Vertex 3 {m}
+  10.0, 13.0, 10.718796; !- X,Y,Z Vertex 4 {m}
+
+FenestrationSurface:Detailed,
+  RoofICSF,                 !- Name
+  Window,                                 !- Surface Type
+  ASHRAE 90.1-2010 ExtWindow Metal ClimateZone 4-6, !- Construction Name
+  Roof Wall,                   !- Building Surface Name
+  ,                                       !- Outside Boundary Condition Object
+  ,                                       !- View Factor to Ground
+  ,                                       !- Shading Control Name
+  ,                                       !- Frame and Divider Name
+  ,                                       !- Multiplier
+  ,                                       !- Number of Vertices
+  0.0, 12.373471, 10.718796, !- X,Y,Z Vertex 1 {m}
+  0.0, 0.0, 10.718796, !- X,Y,Z Vertex 2 {m}
+  9.144, 0.0, 10.718796, !- X,Y,Z Vertex 3 {m}
+  9.144, 12.373471, 10.718796; !- X,Y,Z Vertex 4 {m}

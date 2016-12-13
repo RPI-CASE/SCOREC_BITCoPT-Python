@@ -354,6 +354,7 @@ class GeometrySet(object):
     for g in self.g:
       g.nX = int(g.width()/blockWidth)
       g.nY = int(g.height()/blockHeight)
+      print ('For direction: {}    Number of Modules in Stack: {}    Number of Stacks: {}').format(g.dir,g.nY,g.nX)
 
   """
   getAreas:   gets Areas, computes them if they haven't already been

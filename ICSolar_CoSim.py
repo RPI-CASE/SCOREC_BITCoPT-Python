@@ -115,6 +115,7 @@ def solve(init,problemInputs,solverInputs):
   bins = set([g.dir for g in geometry]);
   bins = list(bins)
   bins.append('total')
+  print 'bins =', bins
 
   directionData = {name:{b:np.zeros(timesteps) for b in bins} \
     for name in solverInputs['directionDataNames']}
@@ -275,9 +276,10 @@ def solve(init,problemInputs,solverInputs):
         g.data['inletAirTemp'] = results['airModule']
         g.data['receiverT'] = results['receiver']
 
-        avgCavityAirTemp = np.average(results['airTube'])
-        avgModAirTemp = np.average(results['airModule'])
-        intRadHeatGain = np.average(radGain['intRadHeatGain'])
+        if g.dir == 'south':
+          avgCavityAirTemp = np.average(results['airTube'])
+          avgModAirTemp = np.average(results['airModule'])
+          intRadHeatGain = np.average(radGain['intRadHeatGain'])
 
         # co-simulation variables
         # init['interiorAirTemp']
@@ -334,7 +336,7 @@ def solve(init,problemInputs,solverInputs):
     # co-simulation
     fmuModel.set('SouthCavAirTemp',avgCavityAirTemp) # Will need to get smarter with this when working with multiple windows
     fmuModel.set('SouthWindowSolarInside',intRadHeatGain)
-    fmuModel.set('ICSFElectricGeneration',electData*1000.0)
+    fmuModel.set('ICSFElectricGeneration',directionData['elect']['total'][ts-startStep]*1000)
     cosimRes = fmuModel.do_step(current_t=tsToSec,step_size=dt, new_step=True)
     
     if(daytime and problemInputs['writeVTKFiles']):
@@ -479,6 +481,7 @@ def run(init,solverInputs):
     }
     problemInputs.append(inputDict)
 
+  # print ('The number of modules in a stack is {} and the number of stacks is {}').format()
   # results = solve(problemInputs[0],solverInputs)
   results = Parallel(n_jobs = init['numProcs'])(delayed(solve)(init,problemInputs[i],solverInputs) for i in range(init['numProcs']))
   print data['city'],'final runtime is','%.2f' % (cputime.time()-clockStart)
@@ -587,17 +590,17 @@ if __name__ == "__main__":
   init = { 
   'numProcs':1, # Do not change this value for now
   'tilt':tilt,
-  'startDay':60,
-  'days':3,
+  'startDay':0,
+  'days':365,
   'directory':'ChicagoMSI'+str(tilt),
   'TMY':'data/TMY/USA_IL_Chicago.epw',
-  'geomfile':'data/geometry/MSI_South_ICSF.txt',
+  'geomfile':'data/geometry/MSI_SouthAndRoof_ICSF.txt',
   'useIDFGeom':True,
   'fmuModelName':'./data/fmu/f_49_MSI_ModelForCoSim.fmu',
   'useSunlitFraction':True,
   'writeDataFiles':True,
   'writeVTKFiles':True,
-  'printToCMD':True,
+  'printToCMD':False,
   'stepsPerHour':stepsPerHour,
   'stepsPerDay':24*stepsPerHour,
   }
