@@ -280,6 +280,20 @@ def solve(init,problemInputs,solverInputs):
           avgCavityAirTemp = np.average(results['airTube'])
           avgModAirTemp = np.average(results['airModule'])
           intRadHeatGain = np.average(radGain['intRadHeatGain'])
+          fmuModel.set('SouthYaw',yaw)
+          fmuModel.set('SouthPitch',pitch)
+          fmuModel.set('SouthShadingVector',np.average(shadedVector))
+          fmuModel.set('SouthCavAirTemp',avgCavityAirTemp) # Will need to get smarter with this when working with multiple windows
+          fmuModel.set('SouthWindowSolarInside',intRadHeatGain)
+
+        if g.dir == 'roof': # this needs to be updated to be more intelligent with how it sets output values to EnergyPlus inputs
+          if init['SHW'] == True:
+            fmuModel.set('ICSFThermalFluidFlow_kgps',g.nX*solverInputs['waterFlowRate'])
+            fmuModel.set('ICSFThermalFluidTemperature',results['waterModule'][-1])
+          fmuModel.set('RoofYaw',yaw)
+          fmuModel.set('RoofPitch',pitch)
+          fmuModel.set('RoofShadingVector',np.average(shadedVector))
+
 
         # co-simulation variables
         # init['interiorAirTemp']
@@ -315,7 +329,7 @@ def solve(init,problemInputs,solverInputs):
         if init['printToCMD'] == True:
           if tsToHour%1.0==0.0 and np.average(g.data['DNI']) > 0:
             disDate = timedelta(seconds=int(tsToSec))
-            print ('{};  Q_c={:.1f}; ExtT [C]={:.1f}; ModT={:.1f}; CavT={:.1f}'.format(disDate,np.average(solverInputs['Q_c']),exteriorAirTempForTS,avgModAirTemp,avgCavityAirTemp))
+            print ('{};  Q_c={:.1f}; ExtT [C]={:.1f}; ModT={:.1f}; CavT={:.1f}'.format(disDate,np.average(solverInputs['Q_c']),exteriorAirTempForTS,np.average(results['airModule']),np.average(results['airTube'])))
             print ('                     Alt={:.0f};  Azi={:.0f};  DNI={:.0f};  DHI={:.0f};  EPC={:.1f}'.format(sunPosition['altitude']*180/np.pi,sunPosition['azimuth']*180/np.pi,dniForTS,dhiForTS,facadeData['epc'][index][ts-startStep]))
             print ('                     ShadeVector={:.0f};  Sunlit={:.0f}').format(np.average(shadedVector), np.average(sunlit))
             print ('                     dniAfterExtGlass={:.0f};  dhiAfterExtGlass={:.0f}'.format(np.average(g.data['DNIafterExtGlass']),np.average(g.data['DHIafterExtGlass'])))
@@ -334,8 +348,6 @@ def solve(init,problemInputs,solverInputs):
     # post processing and cleanup
 
     # co-simulation
-    fmuModel.set('SouthCavAirTemp',avgCavityAirTemp) # Will need to get smarter with this when working with multiple windows
-    fmuModel.set('SouthWindowSolarInside',intRadHeatGain)
     fmuModel.set('ICSFElectricGeneration',directionData['elect']['total'][ts-startStep]*1000)
     cosimRes = fmuModel.do_step(current_t=tsToSec,step_size=dt, new_step=True)
     
@@ -592,14 +604,15 @@ if __name__ == "__main__":
   'tilt':tilt,
   'startDay':0,
   'days':365,
-  'directory':'ChicagoMSI'+str(tilt),
+  'directory':'ChicagoMSI_Roof'+str(tilt),
   'TMY':'data/TMY/USA_IL_Chicago.epw',
-  'geomfile':'data/geometry/MSI_SouthAndRoof_ICSF.txt',
+  'geomfile':'data/geometry/MSI_RoofRotated_ICSF.txt',
+  'fmuModelName':'./data/fmu/f_52_MSI_AddTempSource.fmu',
   'useIDFGeom':True,
-  'fmuModelName':'./data/fmu/f_49_MSI_ModelForCoSim.fmu',
+  'SHW':True,
   'useSunlitFraction':True,
   'writeDataFiles':True,
-  'writeVTKFiles':True,
+  'writeVTKFiles':False,
   'printToCMD':False,
   'stepsPerHour':stepsPerHour,
   'stepsPerDay':24*stepsPerHour,

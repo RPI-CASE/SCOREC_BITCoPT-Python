@@ -47,18 +47,18 @@ def runGeometryTest():
   assert np.abs(np.dot(oldg[1]-oldg[0],geom[1]-geom[0])) < 1e-6, \
     "failed rotation test"      
 
-  newGeometry = cg.readNewFile('data/geometry/whole-building-new.txt',"whole-building-new")
-  numWall = 0
-  numWindow = 0
-  for geom in newGeometry:
-    if (geom.facadeType == 'window'):
-      numWindow = numWindow + 1
-    if (geom.facadeType == 'wall'):
-      numWall = numWall + 1
+  # newGeometry = cg.readNewFile('data/geometry/whole-building-new.txt',"whole-building-new")
+  # numWall = 0
+  # numWindow = 0
+  # for geom in newGeometry:
+  #   if (geom.facadeType == 'window'):
+  #     numWindow = numWindow + 1
+  #   if (geom.facadeType == 'wall'):
+  #     numWall = numWall + 1
 
-  assert len(newGeometry) == 8, "failed reading new geometry file"
-  assert numWall == 4, "failed reading new geometry file"
-  assert numWindow == 4, "failed reading new geometry file"
+  # assert len(newGeometry) == 8, "failed reading new geometry file"
+  # assert numWall == 4, "failed reading new geometry file"
+  # assert numWindow == 4, "failed reading new geometry file"
 
 def runSolverTests():
   rate = poisson2D.test()

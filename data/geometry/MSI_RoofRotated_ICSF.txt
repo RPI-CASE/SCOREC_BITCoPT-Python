@@ -16,8 +16,8 @@ BuildingSurface:Detailed,
   ,                                       !- View Factor to Ground
   ,                                       !- Number of Vertices
   -1.0, 13.0, 10.718796, !- X,Y,Z Vertex 1 {m}
-  -1.0, -1.0, 10.718796, !- X,Y,Z Vertex 2 {m}
-  10.0, -1.0, 10.718796, !- X,Y,Z Vertex 3 {m}
+  -1.0, -1.0, 10.93, !- X,Y,Z Vertex 2 {m}
+  10.0, -1.0, 10.93, !- X,Y,Z Vertex 3 {m}
   10.0, 13.0, 10.718796; !- X,Y,Z Vertex 4 {m}
 
 FenestrationSurface:Detailed,
@@ -31,7 +31,7 @@ FenestrationSurface:Detailed,
   ,                                       !- Frame and Divider Name
   ,                                       !- Multiplier
   ,                                       !- Number of Vertices
-  0.0, 12.373471, 10.718796, !- X,Y,Z Vertex 1 {m}
+  0.0, 12.373471, 10.93, !- X,Y,Z Vertex 1 {m}
   0.0, 0.0, 10.718796, !- X,Y,Z Vertex 2 {m}
   9.144, 0.0, 10.718796, !- X,Y,Z Vertex 3 {m}
-  9.144, 12.373471, 10.718796; !- X,Y,Z Vertex 4 {m}
+  9.144, 12.373471, 10.93; !- X,Y,Z Vertex 4 {m}
