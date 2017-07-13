@@ -283,8 +283,11 @@ def solve(init,problemInputs,solverInputs):
           fmuModel.set('SouthYaw',yaw)
           fmuModel.set('SouthPitch',pitch)
           fmuModel.set('SouthShadingVector',np.average(shadedVector))
-          fmuModel.set('SouthCavAirTemp',avgCavityAirTemp) # Will need to get smarter with this when working with multiple windows
-          fmuModel.set('SouthWindowSolarInside',intRadHeatGain)
+          fmuModel.set('BEECavAirTemp',avgCavityAirTemp) # Will need to get smarter with this when working with multiple windows
+          fmuModel.set('BEEWindowSolarInside',intRadHeatGain)
+          if init['SHW'] == True:
+            fmuModel.set('ICSFThermalFluidFlow_kgps',g.nX*solverInputs['waterFlowRate'])
+            fmuModel.set('ICSFThermalFluidTemperature',results['waterModule'][-1])
 
         if g.dir == 'roof': # this needs to be updated to be more intelligent with how it sets output values to EnergyPlus inputs
           if init['SHW'] == True:
@@ -349,6 +352,7 @@ def solve(init,problemInputs,solverInputs):
 
     # co-simulation
     fmuModel.set('ICSFElectricGeneration',directionData['elect']['total'][ts-startStep]*1000)
+    fmuModel.set('ICSFThermalGeneration',directionData['thermal']['total'][ts-startStep]*1000)
     cosimRes = fmuModel.do_step(current_t=tsToSec,step_size=dt, new_step=True)
     
     if(daytime and problemInputs['writeVTKFiles']):
@@ -604,10 +608,10 @@ if __name__ == "__main__":
   'tilt':tilt,
   'startDay':0,
   'days':365,
-  'directory':'ChicagoMSI_Roof'+str(tilt),
-  'TMY':'data/TMY/USA_IL_Chicago.epw',
-  'geomfile':'data/geometry/MSI_RoofRotated_ICSF.txt',
-  'fmuModelName':'./data/fmu/f_52_MSI_AddTempSource.fmu',
+  'directory':'BEEUnit'+str(tilt),
+  'TMY':'data/TMY/USA_NY_CentralPark.epw',
+  'geomfile':'data/geometry/BEEWindowIDF.txt',
+  'fmuModelName':'./data/fmu/in_cosim_NYC.fmu',
   'useIDFGeom':True,
   'SHW':True,
   'useSunlitFraction':True,
@@ -631,7 +635,7 @@ if __name__ == "__main__":
   'interiorAirTemp':20.0,
   'waterFlowRate':1.6*1000.*1e-6, # 1.6 mL/s in kg/s
   # 2.0 m/s * 0.16, cross sectional area, times density in kg/s
-  'airFlowRate':2.0*0.16*1.200,
+  'airFlowRate':1.0*0.16*1.200,
   # data for each facade (one number for each facade)
   'facadeDataNames':['epc','glaze','aoi','yaw','pitch',
                'shade','shadedVector','dni','thermal','elect'],
