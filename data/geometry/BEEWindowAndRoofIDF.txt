@@ -1,0 +1,71 @@
+GlobalGeometryRules,
+  UpperLeftCorner,                        !- Starting Vertex Position
+  Counterclockwise,                       !- Vertex Entry Direction
+  Relative,                               !- Coordinate System
+  Relative,                               !- Daylighting Reference Point Coordinate System
+  Relative;                               !- Rectangular Surface Coordinate System
+
+
+BuildingSurface:Detailed,
+  zone_1_Srf_5,                           !- Name
+  Wall,                                   !- Surface Type
+  GFRP_CONSTRUCTION,                      !- Construction Name
+  zone_0,                                 !- Zone Name
+  Outdoors,                               !- Outside Boundary Condition
+  ,                                       !- Outside Boundary Condition Object
+  Nosun,                             !- Sun Exposure
+  Nowind,                            !- Wind Exposure
+  ,                                       !- View Factor to Ground
+  ,                                       !- Number of Vertices
+  1.5, 0, 4,                              !- X,Y,Z Vertex 1 {m}
+  1.5, -0.307928919792175, 1.11022302462516e-016, !- X,Y,Z Vertex 2 {m}
+  7.5, -0.307928919792175, 1.11022302462516e-016, !- X,Y,Z Vertex 3 {m}
+  7.5, 0, 4;                              !- X,Y,Z Vertex 4 {m}
+
+FenestrationSurface:Detailed,
+  zone_1_Srf_5_glz_0,                     !- Name
+  Window,                                 !- Surface Type
+  EXTERIOR WINDOW,                        !- Construction Name
+  zone_0_Srf_5,                           !- Building Surface Name
+  ,                                       !- Outside Boundary Condition Object
+  ,                                       !- View Factor to Ground
+  ,                                       !- Shading Control Name
+  ,                                       !- Frame and Divider Name
+  ,                                       !- Multiplier
+  ,                                       !- Number of Vertices
+  1.81671845912933, -0.016254460439086, 3.78885436058044, !- X,Y,Z Vertex 1 {m}
+  1.81671845912933, -0.291674464941025, 0.211145624518394, !- X,Y,Z Vertex 2 {m}
+  7.18328142166138, -0.291674464941025, 0.211145624518394, !- X,Y,Z Vertex 3 {m}
+  7.18328142166138, -0.016254460439086, 3.78885436058044; !- X,Y,Z Vertex 4 {m}
+
+BuildingSurface:Detailed,
+  Roof,                           !- Name
+  Wall,                                   !- Surface Type
+  GFRP_CONSTRUCTION_INSUL,                !- Construction Name
+  zone_1,                                 !- Zone Name
+  Outdoors,                               !- Outside Boundary Condition
+  ,                                       !- Outside Boundary Condition Object
+  Sunexposed,                             !- Sun Exposure
+  Windexposed,                            !- Wind Exposure
+  ,                                       !- View Factor to Ground
+  ,                                       !- Number of Vertices
+  1.5, 3.81384, 4.25828,                  !- X,Y,Z Vertex 3 {m}
+  1.5, -0.19788, 4.02828,                 !- X,Y,Z Vertex 4 {m}
+  7.5, -0.19788, 4.02828,                 !- X,Y,Z Vertex 1 {m}
+  7.5, 3.81384, 4.25828;                  !- X,Y,Z Vertex 2 {m}
+
+FenestrationSurface:Detailed,
+  RoofICSF,                           !- Name
+  Roof,                                   !- Surface Type
+  GFRP_CONSTRUCTION_INSUL,                !- Construction Name
+  zone_1,                                 !- Zone Name
+  Outdoors,                               !- Outside Boundary Condition
+  ,                                       !- Outside Boundary Condition Object
+  Sunexposed,                             !- Sun Exposure
+  Windexposed,                            !- Wind Exposure
+  ,                                       !- View Factor to Ground
+  ,                                       !- Number of Vertices
+  1.5, 3.81384, 4.25828,                  !- X,Y,Z Vertex 3 {m}
+  1.5, -0.19788, 4.02828,                 !- X,Y,Z Vertex 4 {m}
+  7.5, -0.19788, 4.02828,                 !- X,Y,Z Vertex 1 {m}
+  7.5, 3.81384, 4.25828;                  !- X,Y,Z Vertex 2 {m}

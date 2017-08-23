@@ -286,13 +286,13 @@ def solve(init,problemInputs,solverInputs):
           fmuModel.set('BEECavAirTemp',avgCavityAirTemp) # Will need to get smarter with this when working with multiple windows
           fmuModel.set('BEEWindowSolarInside',intRadHeatGain)
           if init['SHW'] == True:
-            fmuModel.set('ICSFThermalFluidFlow_kgps',g.nX*solverInputs['waterFlowRate'])
-            fmuModel.set('ICSFThermalFluidTemperature',results['waterModule'][-1])
+            fmuModel.set('ICSFSouthThermalFluidFlow_kgps',g.nX*solverInputs['waterFlowRate'])
+            fmuModel.set('ICSFSouthThermalFluidTemperature',results['waterModule'][-1])
 
         if g.dir == 'roof': # this needs to be updated to be more intelligent with how it sets output values to EnergyPlus inputs
           if init['SHW'] == True:
-            fmuModel.set('ICSFThermalFluidFlow_kgps',g.nX*solverInputs['waterFlowRate'])
-            fmuModel.set('ICSFThermalFluidTemperature',results['waterModule'][-1])
+            fmuModel.set('ICSFRoofThermalFluidFlow_kgps',g.nX*solverInputs['waterFlowRate'])
+            fmuModel.set('ICSFRoofThermalFluidTemperature',results['waterModule'][-1])
           fmuModel.set('RoofYaw',yaw)
           fmuModel.set('RoofPitch',pitch)
           fmuModel.set('RoofShadingVector',np.average(shadedVector))
