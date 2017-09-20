@@ -1,8 +1,7 @@
 # BITCoPT
-This is the second version of the BITCoPT code developed by Daniel W. Zaide.
 
 ## Documentation 
-General documentation is in doc/guide.tex. There is other documentation in the doc directory.
+General documentation is in doc/guide.tex. There is other documentation in the doc directory. Comments have been added throughout the code to describe functions, inputs, and output. 
 
 ## Dependencies
 There are three main dependencies that may need to be installed: pytz for timezones, solar for solar calculations, and shapely for geometries. This code works best with Python 2.x.
