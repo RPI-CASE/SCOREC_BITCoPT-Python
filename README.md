@@ -1,4 +1,5 @@
 # BITCoPT
+This is the second version of the BITCoPT code developed by Daniel W. Zaide, Justin Shultz, and Assad Oberai, through a collaboration between the Scientific Computation Research Center (SCOREC) and Center for Architecture Science and Ecology (CASE) at the Rensselaer Polytechnic Institute.
 
 ## Documentation 
 General documentation is in doc/guide.tex. There is other documentation in the doc directory. Comments have been added throughout the code to describe functions, inputs, and output. 
