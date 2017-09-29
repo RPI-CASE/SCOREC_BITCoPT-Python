@@ -231,6 +231,7 @@ def solve(problemInputs,solverInputs):
 
         directionData['elect'][g.dir][ts-startStep] += electData*(1+len(matches))
         facadeData['elect'][index][ts-startStep] = electData
+        facadeData['waterModule'][index][ts-startStep] = results['waterModule'][-1]
 
         # thermal calculations
         thermalData = np.sum(solverInputs['waterFlowRate']*4.218 \
@@ -244,7 +245,7 @@ def solve(problemInputs,solverInputs):
           directionData['thermal'][g.dir][ts-startStep] += thermalData*(1+len(matches))
           facadeData['thermal'][index][ts-startStep] = thermalData
         # fill in matching data for thermal, electrical, and epc
-        for name in ['thermal','elect','epc']:
+        for name in ['thermal','elect','epc','waterModule']:
           for match in matches:
             facadeData[name][geometry.index(match)] = facadeData[name][index]
 
@@ -493,7 +494,7 @@ if __name__ == "__main__":
   'geomfile':'data/geometry/whole-building.txt',
   'useSunlitFraction':True,
   'writeDataFiles':True,
-  'writeVTKFiles':True,
+  'writeVTKFiles':False,
   'stepsPerDay':24,
   }
 
@@ -510,7 +511,7 @@ if __name__ == "__main__":
   'airFlowRate':2.0*0.16*1.200,
   # data for each facade (one number for each facade)
   'facadeDataNames':['epc','glaze','aoi','yaw','pitch',
-               'shade','dni','thermal','elect'],
+               'shade','dni','waterModule','thermal','elect'],
   # data on modules (a number for each module)
   'moduleDataNames':['DNI','DNIatModule','DHI','DHIatModule', 'Glazing', \
                      'waterModuleT','waterTubeT','inletAirTemp','externalAirT',
