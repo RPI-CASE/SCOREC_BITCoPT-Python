@@ -282,24 +282,16 @@ def solve(init,problemInputs,solverInputs):
         intRadHeatGain = np.average(radGain['intRadHeatGain'])
 
 
-        for direction in cosimDirections:
-          if g.dir == 'south':
-            fmuModel.set('SouthYaw',yaw)
-            fmuModel.set('SouthPitch',pitch)
-            fmuModel.set('SouthShadingVector',np.average(shadedVector))
-            fmuModel.set('BEECavAirTemp',avgCavityAirTemp) # Will need to get smarter with this when working with multiple windows
-            fmuModel.set('BEEWindowSolarInside',intRadHeatGain)
+        for direction in problemInputs['cosimDirections']:
+          if g.dir == direction:
+            # fmuModel.set('SouthYaw',yaw)
+            # fmuModel.set('SouthPitch',pitch)
+            # fmuModel.set('SouthShadingVector',np.average(shadedVector))
+            fmuModel.set(str(direction)+'CavAirTemp',avgCavityAirTemp) 
+            fmuModel.set(str(direction)+'WindowSolarInside',intRadHeatGain)
             if init['SHW'] == True:
-              fmuModel.set('ICSFSouthThermalFluidFlow_kgps',g.nX*solverInputs['waterFlowRate'])
-              fmuModel.set('ICSFSouthThermalFluidTemperature',results['waterModule'][-1])
-
-          if g.dir == 'roof': # this needs to be updated to be more intelligent with how it sets output values to EnergyPlus inputs
-            if init['SHW'] == True:
-              fmuModel.set('ICSFRoofThermalFluidFlow_kgps',g.nX*solverInputs['waterFlowRate'])
-              fmuModel.set('ICSFRoofThermalFluidTemperature',results['waterModule'][-1])
-            fmuModel.set('RoofYaw',yaw)
-            fmuModel.set('RoofPitch',pitch)
-            fmuModel.set('RoofShadingVector',np.average(shadedVector))
+              fmuModel.set(str(direction)+'FluidFlow_kgps',g.nX*solverInputs['waterFlowRate'])
+              fmuModel.set(str(direction)+'FluidTemperature',results['waterModule'][-1])
 
 
         # co-simulation variables
@@ -356,7 +348,7 @@ def solve(init,problemInputs,solverInputs):
 
     # co-simulation
     fmuModel.set('ICSFElectricGeneration',directionData['elect']['total'][ts-startStep]*1000)
-    fmuModel.set('ICSFThermalGeneration',directionData['thermal']['total'][ts-startStep]*1000)
+    # fmuModel.set('ICSFThermalGeneration',directionData['thermal']['total'][ts-startStep]*1000)
     cosimRes = fmuModel.do_step(current_t=tsToSec,step_size=dt, new_step=True)
     
     if(daytime and problemInputs['writeVTKFiles']):
@@ -624,7 +616,7 @@ if __name__ == "__main__":
   'geomfile':'data/geometry/BEEWindowIDF.txt',
   'fmuModelName':'./data/fmu/in_cosim_NYC.fmu',
   'lightingFile':'./data/lighting/CosimLSchedz_0_20171012_lat33.csv',
-  'cosimDirections':['south'],
+  'cosimDirections':[],
   'useIDFGeom':True,
   'SHW':True,
   'useSunlitFraction':True,
