@@ -1,0 +1,22 @@
+GlobalGeometryRules,
+  UpperLeftCorner,                        !- Starting Vertex Position
+  Counterclockwise,                       !- Vertex Entry Direction
+  Relative,                               !- Coordinate System
+  Relative,                               !- Daylighting Reference Point Coordinate System
+  Relative;                               !- Rectangular Surface Coordinate System
+
+FenestrationSurface:Detailed,
+  BITCoPT South Window,                   !- Name
+  Window,                                 !- Surface Type
+  U 0.42 SHGC 0.40 Dbl LoE (e2-.1) Tint 6mm/6mm Air, !- Construction Name
+  BITCoPT South ExteriorWall,             !- Building Surface Name
+  ,                                       !- Outside Boundary Condition Object
+  ,                                       !- View Factor to Ground
+  ,                                       !- Shading Control Name
+  ,                                       !- Frame and Divider Name
+  ,                                       !- Multiplier
+  ,                                       !- Number of Vertices
+  -49.8856, 0, 3.93314966887417,          !- X,Y,Z Vertex 1 {m}
+  -49.8856, 0, 0.76,                      !- X,Y,Z Vertex 2 {m}
+  -0.0254000000000058, 0, 0.76,           !- X,Y,Z Vertex 3 {m}
+  -0.0254000000000058, 0, 3.93314966887417; !- X,Y,Z Vertex 4 {m}

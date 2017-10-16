@@ -140,6 +140,56 @@ def readNewFile(filename,name,useSunlit = True):
 
   # g.plot(geometrySet,numbers = True, normals = True)
   return geometrySet
+
+"""
+readIDFFile:    read the window components from the IDF 
+                captures the coordinates of each window
+                and adds the coordinates to the geometry class
+
+input(s):       filename = IDF file
+                name = Name of the system (BITCoPT)
+                directions = direction to simulate
+                iddfile = the EnergyPlus idd file, can be found in your E+ install
+output(s):      GeometrySet object
+"""
+def readIDFFile(filename,name,directions,iddFile,useSunlit = True):
+  from eppy import modeleditor
+  from eppy.modeleditor import IDF
+
+  geometrySet = g.GeometrySet('name')
+
+  try:
+    IDF.setiddname(iddFile)
+  except modeleditor.IDDAlreadySetError as e:
+    pass
+
+  idf1 = IDF(filename)
+
+  starting_vertex_position = idf1.idfobjects['GLOBALGEOMETRYRULES'][0].Starting_Vertex_Position
+  vertex_entry_direction = idf1.idfobjects['GLOBALGEOMETRYRULES'][0].Vertex_Entry_Direction
+
+
+  if starting_vertex_position == 'UpperLeftCorner':
+    coord_offset = 2 # my starting corner is bottom right
+
+
+  windows = idf1.idfobjects['FENESTRATIONSURFACE:DETAILED']
+  for direction in directions:
+    for window in windows:
+      if str(name+direction).lower() in str(window.Name).replace(' ','').lower():
+        coords = [np.array([window.Vertex_1_Xcoordinate,window.Vertex_1_Ycoordinate,window.Vertex_1_Zcoordinate],float),np.array([window.Vertex_2_Xcoordinate,window.Vertex_2_Ycoordinate,window.Vertex_2_Zcoordinate],float),np.array([window.Vertex_3_Xcoordinate,window.Vertex_3_Ycoordinate,window.Vertex_3_Zcoordinate],float),np.array([window.Vertex_4_Xcoordinate,window.Vertex_4_Ycoordinate,window.Vertex_4_Zcoordinate],float)]
+        if vertex_entry_direction == 'Counterclockwise':
+          coords.reverse()
+        coords = [coords[(i + coord_offset) % 4] for i in range(len(coords))]
+        geom = g.Geometry(coords)
+        geometrySet.append(geom)
+
+  geometrySet.computeSubsets(useSunlit)
+  geometrySet.computeMatches(useSunlit)
+
+  return geometrySet
+
+
 """
 writeVTKFile:   writes a paraview VTK file of the data stored in the geometry
 

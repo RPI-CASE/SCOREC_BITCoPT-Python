@@ -96,19 +96,19 @@ def solve(init,problemInputs,solverInputs):
   endStep = endDay*stepsPerDay
   # print "startStep", startStep, "endStep", endStep
 
-  ############################################### load EnergyPlus FMu for co-simulation
+  ############################################### load EnergyPlus FMuU for co-simulation
   # fill in load code here 
+  if init['cosimulation'] == True:
+    # load FMU
+    fmuModel = load_fmu(init['fmuModelName'])
 
-  # load FMU
-  fmuModel = load_fmu(init['fmuModelName'])
-
-  # load options
-  opts = fmuModel.simulate_options()
-  # set number of communication points equal to timesteps
-  opts['ncp'] = timesteps
-  # manual initialize
-  opts['initialize'] = False
-  fmuModel.initialize(startDay*86400,endDay*86400)
+    # load options
+    opts = fmuModel.simulate_options()
+    # set number of communication points equal to timesteps
+    opts['ncp'] = timesteps
+    # manual initialize
+    opts['initialize'] = False
+    fmuModel.initialize(startDay*86400,endDay*86400)
 
   ############################################### set up results 
 
@@ -281,17 +281,17 @@ def solve(init,problemInputs,solverInputs):
         avgModAirTemp = np.average(results['airModule'])
         intRadHeatGain = np.average(radGain['intRadHeatGain'])
 
-
-        for direction in problemInputs['cosimDirections']:
-          if g.dir == direction:
-            # fmuModel.set('SouthYaw',yaw)
-            # fmuModel.set('SouthPitch',pitch)
-            # fmuModel.set('SouthShadingVector',np.average(shadedVector))
-            fmuModel.set(str(direction)+'CavAirTemp',avgCavityAirTemp) 
-            fmuModel.set(str(direction)+'WindowSolarInside',intRadHeatGain)
-            if init['SHW'] == True:
-              fmuModel.set(str(direction)+'FluidFlow_kgps',g.nX*solverInputs['waterFlowRate'])
-              fmuModel.set(str(direction)+'FluidTemperature',results['waterModule'][-1])
+        if init['cosimulation'] == True:
+          for direction in problemInputs['cosimDirections']:
+            if g.dir == direction:
+              # fmuModel.set('SouthYaw',yaw)
+              # fmuModel.set('SouthPitch',pitch)
+              # fmuModel.set('SouthShadingVector',np.average(shadedVector))
+              fmuModel.set('BITCoPT'+str(direction)+'WindowCavAirTemp',avgCavityAirTemp) 
+              fmuModel.set('BITCoPT'+str(direction)+'WindowSolarInside',intRadHeatGain)
+              if init['SHW'] == True:
+                fmuModel.set(str(direction)+'FluidFlow_kgps',g.nX*solverInputs['waterFlowRate'])
+                fmuModel.set(str(direction)+'FluidTemperature',results['waterModule'][-1])
 
 
         # co-simulation variables
@@ -346,16 +346,18 @@ def solve(init,problemInputs,solverInputs):
       sum([directionData['elect'][b][ts-startStep] for b in bins if b is not 'total'])
     # post processing and cleanup
 
-    # co-simulation
-    fmuModel.set('ICSFElectricGeneration',directionData['elect']['total'][ts-startStep]*1000)
-    # fmuModel.set('ICSFThermalGeneration',directionData['thermal']['total'][ts-startStep]*1000)
-    cosimRes = fmuModel.do_step(current_t=tsToSec,step_size=dt, new_step=True)
+    if init['cosimulation'] == True:
+      # co-simulation
+      fmuModel.set('BITCoPTElectricGeneration',directionData['elect']['total'][ts-startStep]*1000)
+      # fmuModel.set('ICSFThermalGeneration',directionData['thermal']['total'][ts-startStep]*1000)
+      cosimRes = fmuModel.do_step(current_t=tsToSec,step_size=dt, new_step=True)
     
     if(daytime and problemInputs['writeVTKFiles']):
       casegeom.writeVTKfile(geometry,'Results/'+directory+'/VTK/geom'+'0'*(4-len(str(ts)))+str(ts)+'.vtk','')
   
-  # terminate co-simulation
-  fmuModel.terminate()
+  if init['cosimulation'] == True:
+    # terminate co-simulation
+    fmuModel.terminate()
   
   print "runtime for day",startDay,"to end of day",startDay+days-1,":",'%.2f' % (cputime.time()-clockStart)
   return (directionData,facadeData)
@@ -424,8 +426,10 @@ def run(init,solverInputs):
 
   # set up geometry
   if init['useIDFGeom'] == True:
-    geometry = casegeom.readNewFile(init['geomfile'],"ICSolar",
-      init['useSunlitFraction'])
+    # geometry = casegeom.readNewFile(init['geomfile'],"ICSolar",
+    #   init['useSunlitFraction'])
+    geometry = casegeom.readIDFFile(init['geomfile'],init['systemName'],
+      init['cosimDirections'],init['idd'],init['useSunlitFraction'])
   else:
     geometry = casegeom.readFile(init['geomfile'],"ICSolar",
       init['useSunlitFraction'])
@@ -607,17 +611,21 @@ if __name__ == "__main__":
 
   # these are general variables
   init = { 
+  'systemName':'BITCoPT',
   'numProcs':1, # Do not change this value for now
   'tilt':tilt,
   'startDay':0,
-  'days':365,
-  'directory':'BEEUnit'+str(tilt),
+  'days':5,
+  'directory':'CBECS'+str(tilt),
   'TMY':'data/TMY/USA_NY_CentralPark.epw',
-  'geomfile':'data/geometry/BEEWindowIDF.txt',
-  'fmuModelName':'./data/fmu/in_cosim_NYC.fmu',
-  'lightingFile':'./data/lighting/CosimLSchedz_0_20171012_lat33.csv',
-  'cosimDirections':[],
   'useIDFGeom':True,
+  # 'geomfile':'data/geometry/whole-building.txt',
+  'geomfile':'data/idf/FirstExportForRoughLinks_CoSim.idf',
+  'cosimulation':False,
+  'fmuModelName':'./data/fmu/FirstExportForRoughLinks_CoSim.fmu',
+  'lightingFile':'./data/lighting/CosimLSchedz_0_20171012_lat33.csv',
+  'cosimDirections':['South','East','West','Core'],
+  'idd':'C:/openstudio-2.2.0/EnergyPlus/Energy+.idd',
   'SHW':True,
   'useSunlitFraction':True,
   'writeDataFiles':True,

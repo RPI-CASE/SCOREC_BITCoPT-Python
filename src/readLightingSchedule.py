@@ -10,7 +10,9 @@ def readLightingSchedule(cosimDirection, filename):
 
   # Load lighting fraction for each co-simulation direction
   for direction in cosimDirection:
-    header = str(direction)+'.InteriorLightingFraction'
+    if str(direction).lower() == 'core':
+      direction = 'roof'
+    header = str(direction).lower()+'.InteriorLightingFraction'
 
     # Get index number in first row of the lighting fraction file 
     # that corresponds to the header string
