@@ -84,7 +84,7 @@ def solve(init,problemInputs,solverInputs):
   conversionFactor = solverInputs['lensEfficiency']*\
     solverInputs['concentrationRatio']*solverInputs['cellArea']
 
-  stepsPerDay = problemInputs['stepsPerDay']
+  stepsPerDay = init['timeStepsPerHour']*24
 
   interpTime = range(startDay*24,endDay*24) # hourly value from 0 to 8760, needs to be int
   # print "interpTime length:", len(interpTime)
@@ -438,7 +438,7 @@ def run(init,solverInputs):
   geometry.initializeData(solverInputs['moduleDataNames'])
   casegeom.tiltGeometry(geometry,init['tilt'],init['useSunlitFraction'])
 
-  stepsPerDay = init['stepsPerDay']
+  stepsPerDay = init['timeStepsPerHour']*24
   timesteps = init['days']*stepsPerDay
   startStep = init['startDay']*stepsPerDay
   endStep = (init['days']+init['startDay'])*stepsPerDay
@@ -498,7 +498,6 @@ def run(init,solverInputs):
     'DNI':DNI[stepRange],
     'exteriorAirTemp':exteriorAirTemp[stepRange],
     'DHI':DHI[stepRange],
-    'stepsPerDay':init['stepsPerDay'],
     'cosimDirections':init['cosimDirections'],
     'lightingFraction':lightingFraction,
     }
@@ -513,7 +512,7 @@ def run(init,solverInputs):
 
   for i in range(init['numProcs']):
     (start,end) = procSplit[i]
-    resultRange = slice((start-init['startDay'])*init['stepsPerDay'],(end-init['startDay'])*init['stepsPerDay'])
+    resultRange = slice((start-init['startDay'])*init['timeStepsPerHour']*24,(end-init['startDay'])*init['timeStepsPerHour']*24)
     # print "resultRange:",resultRange
     for b in bins:
       for name in solverInputs['directionDataNames']:
@@ -611,33 +610,35 @@ if __name__ == "__main__":
 
   # these are general variables
   init = { 
-  'systemName':'BITCoPT',
-  'numProcs':1, # Do not change this value for now
-  'tilt':tilt,
+  # Simulation time parameters
+  'timeStepsPerHour':6,
   'startDay':0,
   'days':5,
-  'directory':'CBECS'+str(tilt),
-  'TMY':'data/TMY/USA_NY_CentralPark.epw',
-  'useIDFGeom':True,
-  # 'geomfile':'data/geometry/whole-building.txt',
-  'geomfile':'data/idf/FirstExportForRoughLinks_CoSim.idf',
+  'numProcs':1, # Do not change this value for now
+  'useSunlitFraction':True,
+  # System parameters
+  'systemName':'BITCoPT',
   'cosimulation':False,
+  'cosimDirections':['South','East','West','Core'],
+  'SHW':True, # Is the hot fluid used in the building?
+  'tilt':tilt,
+  # Necessary input files - UPDATE THESE FOR YOUR CASE
+  'TMY':'data/TMY/USA_NY_CentralPark.epw', # weather file
+  'useIDFGeom':True, # Reads goemetry directly from IDF file
+  'geomfile':'data/idf/FirstExportForRoughLinks_CoSim.idf', 
   'fmuModelName':'./data/fmu/FirstExportForRoughLinks_CoSim.fmu',
   'lightingFile':'./data/lighting/CosimLSchedz_0_20171012_lat33.csv',
-  'cosimDirections':['South','East','West','Core'],
   'idd':'C:/openstudio-2.2.0/EnergyPlus/Energy+.idd',
-  'SHW':True,
-  'useSunlitFraction':True,
+  # Output parameters
+  'directory':'CBECS'+str(tilt), # where do you want output saved
   'writeDataFiles':True,
   'writeVTKFiles':False,
   'printToCMD':False,
-  'stepsPerHour':stepsPerHour,
-  'stepsPerDay':24*stepsPerHour,
   }
 
   # these are run specific variables
   solverInputs = {
-  'dt':24./init['stepsPerDay']*3600.,
+  'dt':3600./init['timeStepsPerHour'],
   'lensEfficiency':0.886, # transmittance efficiency of the concentrating lens
   'concentrationRatio':625.5, # concentration of DNI by the fresnel lens
   'cellArea':0.0001, # area of the photovoltaic cell in m^2

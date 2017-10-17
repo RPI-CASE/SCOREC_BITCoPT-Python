@@ -145,6 +145,8 @@ def readNewFile(filename,name,useSunlit = True):
 readIDFFile:    read the window components from the IDF 
                 captures the coordinates of each window
                 and adds the coordinates to the geometry class
+                Window names must be '<Systen Name> <Direction>'
+                (i.e. BITCoPT South)
 
 input(s):       filename = IDF file
                 name = Name of the system (BITCoPT)
@@ -183,6 +185,14 @@ def readIDFFile(filename,name,directions,iddFile,useSunlit = True):
         coords = [coords[(i + coord_offset) % 4] for i in range(len(coords))]
         geom = g.Geometry(coords)
         geometrySet.append(geom)
+
+  if len(geometrySet) < len(directions):
+    print 'Length of geometrySet = ' + str(len(geometrySet))
+    print 'Length of co-simulation directions = ' + str(len(directions))
+    print 'Verify that you are following the required naming convention for each Fenestration components: <System Name> <direction> Window'
+    print 'For example, if you were trying to run BITCoPT on the South and East your idf file needs to have two fenestration components called: BITCoPT South Window and BITCoPT East Window'
+    sys.exit("The script was not able to find the correct number of windows to match the desired co-simulation directions")
+
 
   geometrySet.computeSubsets(useSunlit)
   geometrySet.computeMatches(useSunlit)
