@@ -55,6 +55,12 @@ pip install joblib
 pip install numdifftools
 ```
 
+#### Install eppy (http://pythonhosted.org//eppy/):
+```
+pip install eppy
+```
+
+
 ### Automatic Install - not currently working
 Update distribute libraries with (may require admin):
 ```
