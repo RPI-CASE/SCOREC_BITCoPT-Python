@@ -17,6 +17,7 @@ idf1 = IDF(fname)
 # South, East, West, and Core
 # Case sensitive, so match the case in the OpenStudio file
 directions = ['South']
+daylighting = True
 
 instructions = """
 For this script to run correctly: 
@@ -27,7 +28,9 @@ For this script to run correctly:
 			iii) Pump:Variable => BITCoPT <direction> Var Spd Pump
 			iv) SetpointManager:Scheduled => BITCoPT <direction> Scheduled HW Temp
 	2) If your file already includes an ExternalInterface component make sure it is for FunctionalMockupUnitExport
-	3) If there are any generators in the base IDF file, change the conditional statement on line 180
+	3) If there are already generators in the base IDF file, change the conditional statement on line 200
+	4) Make sure you have an individual lighting definition for each zone in OpenStudio so that they can be controlled independently with the daylighting schedule in the co-simulation
+		a) Name each lighting schedule by the name of the zone and direction: South Lights
 """
 print instructions
 
@@ -120,6 +123,23 @@ for bWindow in BITCoPTWindows:
 			toActuatorLast.Initial_Value = 20
 
 			print toActuatorLast
+
+# Setup componets for daylighting input during co-simulation
+lights = idf1.idfobjects['LIGHTS']
+for direction in direction:
+	for light in lights:
+		if str(direction).lower() in (light.Name).lower():
+			# Create new To:Schedule component that accepts the lighting fraction schedule value during co-simulation
+			idf1.newidfobject('EXTERNALINTERFACE:FUNCTIONALMOCKUPUNITEXPORT:TO:SCHEDULE')
+			toScheduleLast = idf1.idfobjects['EXTERNALINTERFACE:FUNCTIONALMOCKUPUNITEXPORT:TO:SCHEDULE'][-1]
+			toScheduleLast.Schedule_Name = light.Name + ' Fractional Schedule'
+			toScheduleLast.Schedule_Type_Limits_Names = 'Any Number'
+			toScheduleLast.FMU_Variable_Name = (light.Name + 'Fraction').replace(' ', '')
+			toScheduleLast.Initial_Value = 1
+			# Set Lights component to use the new schedule name
+			light.Schedule_Name = toScheduleLast.Schedule_Name
+			light.Fraction_Replaceable = 1
+
 
 # Setup components and schedules to connect BITCoPT hot water to 
 # PlantComponent:TemperatureSource, Pump, and SetpointManager:Scheduled

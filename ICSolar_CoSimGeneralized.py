@@ -289,6 +289,7 @@ def solve(init,problemInputs,solverInputs):
               # fmuModel.set('SouthShadingVector',np.average(shadedVector))
               fmuModel.set('BITCoPT'+str(direction)+'WindowCavAirTemp',avgCavityAirTemp) 
               fmuModel.set('BITCoPT'+str(direction)+'WindowSolarInside',intRadHeatGain)
+              fmuModel.set(str(direction)+'',lightingFraction[direction])
               if init['SHW'] == True:
                 fmuModel.set(str(direction)+'FluidFlow_kgps',g.nX*solverInputs['waterFlowRate'])
                 fmuModel.set(str(direction)+'FluidTemperature',results['waterModule'][-1])
