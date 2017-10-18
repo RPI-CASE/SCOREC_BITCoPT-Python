@@ -284,12 +284,14 @@ def solve(init,problemInputs,solverInputs):
         if init['cosimulation'] == True:
           for direction in problemInputs['cosimDirections']:
             if g.dir == direction:
+              if str(direction) == 'Roof':
+                direction = 'Core'
               # fmuModel.set('SouthYaw',yaw)
               # fmuModel.set('SouthPitch',pitch)
               # fmuModel.set('SouthShadingVector',np.average(shadedVector))
               fmuModel.set('BITCoPT'+str(direction)+'WindowCavAirTemp',avgCavityAirTemp) 
               fmuModel.set('BITCoPT'+str(direction)+'WindowSolarInside',intRadHeatGain)
-              fmuModel.set(str(direction)+'',lightingFraction[direction])
+              fmuModel.set(str(direction)+'LightsFraction',lightingFraction[direction])
               if init['SHW'] == True:
                 fmuModel.set(str(direction)+'FluidFlow_kgps',g.nX*solverInputs['waterFlowRate'])
                 fmuModel.set(str(direction)+'FluidTemperature',results['waterModule'][-1])
@@ -619,19 +621,19 @@ if __name__ == "__main__":
   'useSunlitFraction':True,
   # System parameters
   'systemName':'BITCoPT',
-  'cosimulation':False,
-  'cosimDirections':['South','East','West','Core'],
+  'cosimulation':True,
+  'cosimDirections':['South'], # all options are ['South','East','West','Core']
   'SHW':True, # Is the hot fluid used in the building?
   'tilt':tilt,
   # Necessary input files - UPDATE THESE FOR YOUR CASE
   'TMY':'data/TMY/USA_NY_CentralPark.epw', # weather file
   'useIDFGeom':True, # Reads goemetry directly from IDF file
-  'geomfile':'data/idf/FirstExportForRoughLinks_CoSim.idf', 
-  'fmuModelName':'./data/fmu/FirstExportForRoughLinks_CoSim.fmu',
+  'geomfile':'data/idf/Export_2_LargerTest_CoSim.idf', 
+  'fmuModelName':'./data/fmu/Export_2_LargerTest_CoSim.fmu',
   'lightingFile':'./data/lighting/CosimLSchedz_0_20171012_lat33.csv',
   'idd':'C:/openstudio-2.2.0/EnergyPlus/Energy+.idd',
   # Output parameters
-  'directory':'CBECS'+str(tilt), # where do you want output saved
+  'directory':'CBECS_NYC'+str(tilt), # where do you want output saved
   'writeDataFiles':True,
   'writeVTKFiles':False,
   'printToCMD':False,

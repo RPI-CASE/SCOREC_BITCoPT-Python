@@ -7,7 +7,7 @@ try:
 except modeleditor.IDDAlreadySetError as e:
   pass
 
-fname = "./1_FirstExportForRoughLinks/FirstExportForRoughLinks.idf"
+fname = "./Export_2_LargerTest.idf"
 idf1 = IDF(fname)
 
 # idf1.printidf()
@@ -57,10 +57,12 @@ print '_________________________________________________________________\n'
 
 print "Adding the ExternalInterface:FunctionalMockupUnitExport:From:Variable component for the Outdoor Air Temperature:"
 
+zones = idf1.idfobjects['ZONE']
+
 # Add FMU Output object for Outdoor Air Temperature
 idf1.newidfobject('EXTERNALINTERFACE:FUNCTIONALMOCKUPUNITEXPORT:FROM:VARIABLE')
 fromVariableLast = idf1.idfobjects['EXTERNALINTERFACE:FUNCTIONALMOCKUPUNITEXPORT:FROM:VARIABLE'][-1]
-fromVariableLast.OutputVariable_Index_Key_Name = 'Outdoor Air Temperature'
+fromVariableLast.OutputVariable_Index_Key_Name = zones[-1].Name
 fromVariableLast.OutputVariable_Name = 'Zone Outdoor Air Drybulb Temperature'
 fromVariableLast.FMU_Variable_Name = 'TOutEnv'
 
@@ -115,7 +117,7 @@ for bWindow in BITCoPTWindows:
 			# new boundary condition in EnergyPlus for the BITCoPT cavity condition
 			idf1.newidfobject('EXTERNALINTERFACE:FUNCTIONALMOCKUPUNITEXPORT:TO:ACTUATOR')
 			toActuatorLast = idf1.idfobjects['EXTERNALINTERFACE:FUNCTIONALMOCKUPUNITEXPORT:TO:ACTUATOR'][-1]
-			toActuatorLast.Name = window.Name + ' Cavity Temp'
+			toActuatorLast.Name = (window.Name + ' Cavity Temp').replace(' ','')
 			toActuatorLast.Actuated_Component_Unique_Name = window.Name
 			toActuatorLast.Actuated_Component_Type = 'Surface'
 			toActuatorLast.Actuated_Component_Control_Type = 'Outdoor Air Drybulb Temperature'
@@ -126,7 +128,7 @@ for bWindow in BITCoPTWindows:
 
 # Setup componets for daylighting input during co-simulation
 lights = idf1.idfobjects['LIGHTS']
-for direction in direction:
+for direction in directions:
 	for light in lights:
 		if str(direction).lower() in (light.Name).lower():
 			# Create new To:Schedule component that accepts the lighting fraction schedule value during co-simulation
@@ -175,7 +177,7 @@ for direction in directions:
 				# Add actuator input object to control pump flowrate
 				idf1.newidfobject('EXTERNALINTERFACE:FUNCTIONALMOCKUPUNITEXPORT:TO:ACTUATOR')
 				toActuatorLast = idf1.idfobjects['EXTERNALINTERFACE:FUNCTIONALMOCKUPUNITEXPORT:TO:ACTUATOR'][-1]
-				toActuatorLast.Name = 'BITCoPT '+str(direction)+' Var Spd Pump Mass Flow Actuator'
+				toActuatorLast.Name = ('BITCoPT '+str(direction)+' Var Spd Pump Mass Flow Actuator').replace(' ','')
 				toActuatorLast.Actuated_Component_Unique_Name = 'BITCoPT '+str(direction)+' Var Spd Pump'
 				toActuatorLast.Actuated_Component_Type = 'Pump'
 				toActuatorLast.Actuated_Component_Control_Type = 'Pump Mass Flow Rate'
@@ -316,7 +318,6 @@ outputVariables = [
 	'Surface Outside Face Incident Solar Radiation Rate per Area',
 	'Surface Outside Face Outdoor Air Drybulb Temperature',
 	'Surface Outside Face Temperature',
-	'Zone Outdoor Air Drybulb Temperature',
 	'Zone Thermostat Air Temperature',
 	'Zone Total Internal Total Heating Energy',
 	'Zone Windows Total Heat Gain Rate',
