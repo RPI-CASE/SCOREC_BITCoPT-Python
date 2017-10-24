@@ -78,6 +78,7 @@ def solve(init,problemInputs,solverInputs):
   DNI = problemInputs['DNI']
   exteriorAirTemp = problemInputs['exteriorAirTemp']
   DHI = problemInputs['DHI']
+  lightingFraction = problemInputs['lightingFraction']
 
   dt = solverInputs['dt']
 
@@ -153,6 +154,9 @@ def solve(init,problemInputs,solverInputs):
     # Change the timestep (ts) to time (in seconds) that the model can work with
     tsToSec = ts*dt
     tsToHour = ts*dt/3600.0 
+
+    if tsToHour%24 == 0:
+      print 'Running simulation for '+str(int(tsToHour/24))+' day'
 
     # interpolate weather data values onces as the beginning of the timestep
     # weather data is hourly, simulation runs sub-hourly
@@ -260,13 +264,29 @@ def solve(init,problemInputs,solverInputs):
         solverInputs['Q_c'] = radGain['cavRadHeatGain']*icsolar.moduleHeight*icsolar.moduleWidth
         solverInputs['numModules'] = g.nY
         
-        # set up previous temperature
-        if (not previousDayTime):
-          solverInputs['previousWaterModuleT'] = solverInputs['inletWaterTemp']*np.ones(g.nY)
-          solverInputs['previousWaterTubeT'] = solverInputs['inletWaterTemp']*np.ones(g.nY)
+        if init['cosimulation'] == True:
+          if str(g.dir).lower() == 'roof':
+            tankTemp = fmuModel.get('CoreTTankTemp')
+          else:
+            tankTemp = fmuModel.get(str(g.dir).title()+'TTankTemp')
+          # print 'tankTemp = '+str(tankTemp)
+          # set up previous temperature
+          if (not previousDayTime):
+            solverInputs['previousWaterModuleT'] = solverInputs['inletAirTemp']*np.ones(g.nY)
+            solverInputs['previousWaterTubeT'] = tankTemp*np.ones(g.nY)
+          else:
+            g.data['waterTubeT'][0] = tankTemp
+            # print 'g.data waterTubeT = '+str(g.data['waterTubeT'])
+            solverInputs['previousWaterModuleT'] = g.data['waterModuleT']
+            solverInputs['previousWaterTubeT'] = g.data['waterTubeT']
         else:
-          solverInputs['previousWaterModuleT'] = g.data['waterModuleT']
-          solverInputs['previousWaterTubeT'] = g.data['waterTubeT']
+          # set up previous temperature
+          if (not previousDayTime):
+            solverInputs['previousWaterModuleT'] = solverInputs['inletWaterTemp']*np.ones(g.nY)
+            solverInputs['previousWaterTubeT'] = solverInputs['inletWaterTemp']*np.ones(g.nY)
+          else:
+            solverInputs['previousWaterModuleT'] = g.data['waterModuleT']
+            solverInputs['previousWaterTubeT'] = g.data['waterTubeT']
 
         # solve the problem
         results = icsolar.solve(solverInputs)
@@ -280,21 +300,31 @@ def solve(init,problemInputs,solverInputs):
         avgCavityAirTemp = np.average(results['airTube'])
         avgModAirTemp = np.average(results['airModule'])
         intRadHeatGain = np.average(radGain['intRadHeatGain'])
+        
 
         if init['cosimulation'] == True:
           for direction in problemInputs['cosimDirections']:
-            if g.dir == direction:
-              if str(direction) == 'Roof':
+            # sys.exit('Conditional statement passed')
+            # print 'g.dir = ' + str(g.dir).lower()
+            # print 'direction = ' + str(direction).lower()
+            if str(g.dir).lower() == str(direction).lower():
+              if str(direction).lower() == ('Roof').lower():
                 direction = 'Core'
-              # fmuModel.set('SouthYaw',yaw)
-              # fmuModel.set('SouthPitch',pitch)
-              # fmuModel.set('SouthShadingVector',np.average(shadedVector))
-              fmuModel.set('BITCoPT'+str(direction)+'WindowCavAirTemp',avgCavityAirTemp) 
-              fmuModel.set('BITCoPT'+str(direction)+'WindowSolarInside',intRadHeatGain)
-              fmuModel.set(str(direction)+'LightsFraction',lightingFraction[direction])
+              # Interpolate the lighting fraction schedule and set FMU input
+              lFraction = np.interp(tsToHour,interpTime,lightingFraction[str(direction).title()][startDay*24:endDay*24])
+              fmuModel.set(str(direction).title()+'LightsFraction',lFraction)
+              # Set FMU input for window air temperature
+              fmuModel.set('BITCoPT'+str(direction).title()+'WindowCavAirTemp',avgCavityAirTemp) 
+              # Set FMU input for Solar Incident Inside
+              fmuModel.set('BITCoPT'+str(direction).title()+'WindowSolarInside',intRadHeatGain)
+              # Set FMU inputs for hot water into BEM
               if init['SHW'] == True:
                 fmuModel.set(str(direction)+'FluidFlow_kgps',g.nX*solverInputs['waterFlowRate'])
                 fmuModel.set(str(direction)+'FluidTemperature',results['waterModule'][-1])
+              # Retired FMU inputs
+              # fmuModel.set('SouthYaw',yaw)
+              # fmuModel.set('SouthPitch',pitch)
+              # fmuModel.set('SouthShadingVector',np.average(shadedVector))
 
 
         # co-simulation variables
@@ -412,6 +442,8 @@ def run(init,solverInputs):
       https://energyplus.net/weather or a .csv file from http://rredc.nrel.gov/solar/old_data/nsrdb/1991-2005/tmy3/by_state_and_city.html') 
 
   lightingFraction = rls.readLightingSchedule(init['cosimDirections'],init['lightingFile'])
+  # print 'The lighting fraction schedule pulled from the file is:'
+  # print lightingFraction
 
   # saveVars = zip(data['airTemp'])
   # head = ['extAirTemp']
@@ -616,21 +648,21 @@ if __name__ == "__main__":
   # Simulation time parameters
   'timeStepsPerHour':6,
   'startDay':0,
-  'days':5,
+  'days':360,
   'numProcs':1, # Do not change this value for now
   'useSunlitFraction':True,
   # System parameters
   'systemName':'BITCoPT',
   'cosimulation':True,
-  'cosimDirections':['South'], # all options are ['South','East','West','Core']
+  'cosimDirections':['South','East','West','Core'], # all options are ['South','East','West','Core']
   'SHW':True, # Is the hot fluid used in the building?
   'tilt':tilt,
   # Necessary input files - UPDATE THESE FOR YOUR CASE
   'TMY':'data/TMY/USA_NY_CentralPark.epw', # weather file
   'useIDFGeom':True, # Reads goemetry directly from IDF file
-  'geomfile':'data/idf/Export_2_LargerTest_CoSim.idf', 
-  'fmuModelName':'./data/fmu/Export_2_LargerTest_CoSim.fmu',
-  'lightingFile':'./data/lighting/CosimLSchedz_0_20171012_lat33.csv',
+  'geomfile':'data/idf/Export_4_ColdStart_CoSim.idf', 
+  'fmuModelName':'./data/fmu/Export_4_ColdStart_CoSim.fmu',
+  'lightingFile':'./data/lighting/CosimLSchedz_0_20171020_lat41.csv',
   'idd':'C:/openstudio-2.2.0/EnergyPlus/Energy+.idd',
   # Output parameters
   'directory':'CBECS_NYC'+str(tilt), # where do you want output saved

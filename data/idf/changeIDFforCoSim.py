@@ -7,7 +7,7 @@ try:
 except modeleditor.IDDAlreadySetError as e:
   pass
 
-fname = "./Export_2_LargerTest.idf"
+fname = "./Export_4_ColdStart.idf"
 idf1 = IDF(fname)
 
 # idf1.printidf()
@@ -16,7 +16,7 @@ idf1 = IDF(fname)
 # Starting with South just to start but can expand to
 # South, East, West, and Core
 # Case sensitive, so match the case in the OpenStudio file
-directions = ['South']
+directions = ['South','East','West','Core']
 daylighting = True
 
 instructions = """
@@ -28,7 +28,7 @@ For this script to run correctly:
 			iii) Pump:Variable => BITCoPT <direction> Var Spd Pump
 			iv) SetpointManager:Scheduled => BITCoPT <direction> Scheduled HW Temp
 	2) If your file already includes an ExternalInterface component make sure it is for FunctionalMockupUnitExport
-	3) If there are already generators in the base IDF file, change the conditional statement on line 200
+	3) If there are already generators in the base IDF file, change the conditional statement on line 230
 	4) Make sure you have an individual lighting definition for each zone in OpenStudio so that they can be controlled independently with the daylighting schedule in the co-simulation
 		a) Name each lighting schedule by the name of the zone and direction: South Lights
 """
@@ -68,14 +68,33 @@ fromVariableLast.FMU_Variable_Name = 'TOutEnv'
 
 print fromVariableLast
 
+print '_________________________________________________________________\n'
+
+print "Adding ExternalInterface:FunctionalMockupUnitExport:From:Variable components for the BITCoPT Tanks Temperature:"
+
+for direction in directions:
+	# Add FMU Output object for Outdoor Air Temperature
+	idf1.newidfobject('EXTERNALINTERFACE:FUNCTIONALMOCKUPUNITEXPORT:FROM:VARIABLE')
+	fromVariableLast = idf1.idfobjects['EXTERNALINTERFACE:FUNCTIONALMOCKUPUNITEXPORT:FROM:VARIABLE'][-1]
+	fromVariableLast.OutputVariable_Index_Key_Name = 'BITCoPT '+str(direction)+' Water Heater'
+	fromVariableLast.OutputVariable_Name = 'Water Heater Tank Temperature'
+	fromVariableLast.FMU_Variable_Name = str(direction)+'TTankTemp'
+
+	print fromVariableLast
+
 
 
 
 # Setup windows objects for co-simulation
+BITCoPTWalls = []
 BITCoPTWindows = []
 for name in directions:
 	BITCoPTWindows.append('BITCoPT ' + str(name) + ' Window')
 	# BITCoPTWindows = ['BITCoPT South Window']
+	if str(name).lower() == 'core':
+		BITCoPTWalls.append('BITCoPT '+str(name)+' Roof')
+	else:
+		BITCoPTWalls.append('BITCoPT '+str(name)+' Exterior Wall')
 
 print '_________________________________________________________________\n'
 
@@ -83,6 +102,8 @@ print "Modifying " + str(len(BITCoPTWindows)) + " window(s) for co-simulation wi
 
 # Grab all the window objects in the file
 windows = idf1.idfobjects['FENESTRATIONSURFACE:DETAILED']
+# Grab all the wall objects in the file
+walls = idf1. idfobjects['BUILDINGSURFACE:DETAILED']
 # For each BITCoPT window being studied in this co-simulation
 for bWindow in BITCoPTWindows:
 	# For each window in the list of windows iteration though
@@ -126,6 +147,13 @@ for bWindow in BITCoPTWindows:
 
 			print toActuatorLast
 
+			for bwall in BITCoPTWalls:
+				for wall in walls:
+					if (wall.Name).lower() == (str(bwall)).lower():
+						wall.Sun_Exposure = 'NoSun'
+
+						print wall
+
 # Setup componets for daylighting input during co-simulation
 lights = idf1.idfobjects['LIGHTS']
 for direction in directions:
@@ -159,39 +187,40 @@ for direction in directions:
 	for bitcopt in bitcoptPlantComponents:
 		for component in plantComponents:
 			if component.Name == bitcopt:
-				# Add schedule input object to take BITCoPT fluid temperature
-				idf1.newidfobject('EXTERNALINTERFACE:FUNCTIONALMOCKUPUNITEXPORT:TO:SCHEDULE')
-				toScheduleLast = idf1.idfobjects['EXTERNALINTERFACE:FUNCTIONALMOCKUPUNITEXPORT:TO:SCHEDULE'][-1]
-				toScheduleLast.Schedule_Name = component.Name + ' Schedule'
-				toScheduleLast.Schedule_Type_Limits_Names = 'Any Number'
-				toScheduleLast.FMU_Variable_Name = (str(direction) + 'FluidTemperature').replace(' ', '')
-				toScheduleLast.Initial_Value = 0
+				if direction in component.Name:
+					# Add schedule input object to take BITCoPT fluid temperature
+					idf1.newidfobject('EXTERNALINTERFACE:FUNCTIONALMOCKUPUNITEXPORT:TO:SCHEDULE')
+					toScheduleLast = idf1.idfobjects['EXTERNALINTERFACE:FUNCTIONALMOCKUPUNITEXPORT:TO:SCHEDULE'][-1]
+					toScheduleLast.Schedule_Name = component.Name + ' Schedule'
+					toScheduleLast.Schedule_Type_Limits_Names = 'Any Number'
+					toScheduleLast.FMU_Variable_Name = (str(direction) + 'FluidTemperature').replace(' ', '')
+					toScheduleLast.Initial_Value = 0
 
-				print toScheduleLast
+					print toScheduleLast
 
-				# Set PlantComponent:TemperatureSource scheduled temperature to the new input schedule
-				component.Source_Temperature_Schedule_Name = toScheduleLast.Schedule_Name
+					# Set PlantComponent:TemperatureSource scheduled temperature to the new input schedule
+					component.Source_Temperature_Schedule_Name = toScheduleLast.Schedule_Name
 
-				print component
+					print component
 
-				# Add actuator input object to control pump flowrate
-				idf1.newidfobject('EXTERNALINTERFACE:FUNCTIONALMOCKUPUNITEXPORT:TO:ACTUATOR')
-				toActuatorLast = idf1.idfobjects['EXTERNALINTERFACE:FUNCTIONALMOCKUPUNITEXPORT:TO:ACTUATOR'][-1]
-				toActuatorLast.Name = ('BITCoPT '+str(direction)+' Var Spd Pump Mass Flow Actuator').replace(' ','')
-				toActuatorLast.Actuated_Component_Unique_Name = 'BITCoPT '+str(direction)+' Var Spd Pump'
-				toActuatorLast.Actuated_Component_Type = 'Pump'
-				toActuatorLast.Actuated_Component_Control_Type = 'Pump Mass Flow Rate'
-				toActuatorLast.FMU_Variable_Name = (str(direction)+'FluidFlow_kgps').replace(' ', '')
-				toActuatorLast.Initial_Value = 0
+					# Add actuator input object to control pump flowrate
+					idf1.newidfobject('EXTERNALINTERFACE:FUNCTIONALMOCKUPUNITEXPORT:TO:ACTUATOR')
+					toActuatorLast = idf1.idfobjects['EXTERNALINTERFACE:FUNCTIONALMOCKUPUNITEXPORT:TO:ACTUATOR'][-1]
+					toActuatorLast.Name = ('BITCoPT '+str(direction)+' Var Spd Pump Mass Flow Actuator').replace(' ','')
+					toActuatorLast.Actuated_Component_Unique_Name = 'BITCoPT '+str(direction)+' Var Spd Pump'
+					toActuatorLast.Actuated_Component_Type = 'Pump'
+					toActuatorLast.Actuated_Component_Control_Type = 'Pump Mass Flow Rate'
+					toActuatorLast.FMU_Variable_Name = (str(direction)+'FluidFlow_kgps').replace(' ', '')
+					toActuatorLast.Initial_Value = 0
 
-				print toActuatorLast
+					print toActuatorLast
 
-				# Update setpoint manager schedule
-				for schedule in setpointSchedules:
-					if schedule.Name == 'BITCoPT '+str(direction)+' Scheduled HW Temp':
-						schedule.Schedule_Name = toScheduleLast.Schedule_Name
+					# Update setpoint manager schedule
+					for schedule in setpointSchedules:
+						if schedule.Name == 'BITCoPT '+str(direction)+' Scheduled HW Temp':
+							schedule.Schedule_Name = toScheduleLast.Schedule_Name
 
-						print schedule
+							print schedule
 
 print '_________________________________________________________________\n'
 
@@ -326,7 +355,7 @@ outputVariables = [
 	'Zone Air System Sensible Cooling Rate',
 	'Zone Air System Sensible Heating Rate',
 	'Zone Air Temperature',
-	'  Zone Mechanical Ventilation Mass Flow Rate',
+	'Zone Mechanical Ventilation Mass Flow Rate',
 	'Zone Infiltration Total Heat Loss Energy',
 	'Zone Infiltration Total Heat Gain Energy',
 	'Zone Lights Electric Energy',
@@ -336,7 +365,6 @@ outputVariables = [
 	'Zone Mean Air Humidity Ratio',
 	'Zone Mechanical Ventilation Air Changes per Hour',
 	'People Occupant Count',
-	' Schedule Value',
 	'Zone Mean Air Temperature',
 	'Zone Outdoor Air Drybulb Temperature',
 	'Schedule Value',
@@ -355,6 +383,7 @@ outputVariables = [
 	'Plant Temperature Source Component Source Temperature',
 	'Plant Temperature Source Component Heat Transfer Rate',
 	'Plant Temperature Source Component Heat Transfer Energy',
+	'Water Heater Tank Temperature',
 	'Water Use Equipment Hot Water Mass Flow Rate',
 	'Water Use Equipment Cold Water Mass Flow Rate',
 	'Water Use Equipment Total Mass Flow Rate',
