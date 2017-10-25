@@ -177,6 +177,8 @@ def readIDFFile(filename,name,directions,iddFile,useSunlit = True):
 
   windows = idf1.idfobjects['FENESTRATIONSURFACE:DETAILED']
   for direction in directions:
+    if (direction).lower() == 'roof':
+      direction = 'Core'
     for window in windows:
       if str(name+direction).lower() in str(window.Name).replace(' ','').lower():
         coords = [np.array([window.Vertex_1_Xcoordinate,window.Vertex_1_Ycoordinate,window.Vertex_1_Zcoordinate],float),np.array([window.Vertex_2_Xcoordinate,window.Vertex_2_Ycoordinate,window.Vertex_2_Zcoordinate],float),np.array([window.Vertex_3_Xcoordinate,window.Vertex_3_Ycoordinate,window.Vertex_3_Zcoordinate],float),np.array([window.Vertex_4_Xcoordinate,window.Vertex_4_Ycoordinate,window.Vertex_4_Zcoordinate],float)]

@@ -10,9 +10,6 @@ def readLightingSchedule(cosimDirection, filename):
 
   # Load lighting fraction for each co-simulation direction
   for direction in cosimDirection:
-    # Building energy model uses the name core but the surface is called roof
-    if str(direction).lower() == 'core':
-      direction = 'roof'
     # String name for header
     header = str(direction).lower()+'. LightingFraction'
 
@@ -20,6 +17,9 @@ def readLightingSchedule(cosimDirection, filename):
     # that corresponds to the header string
     fractionIndex = lines[0].split(',').index(header)
 
+    # Building energy model uses the name core but the surface is called roof
+    if str(direction).lower() == 'roof':
+      direction = 'Core'
     # Lighting Fractions
     data[direction] = [float(lines[i].split(',')[fractionIndex]) 
     for i in range(1,len(lines))]

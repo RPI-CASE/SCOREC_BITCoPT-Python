@@ -156,7 +156,7 @@ def solve(init,problemInputs,solverInputs):
     tsToHour = ts*dt/3600.0 
 
     if tsToHour%24 == 0:
-      print 'Running simulation for '+str(int(tsToHour/24))+' day'
+      print 'Running simulation for day: '+str(int(tsToHour/24))
 
     # interpolate weather data values onces as the beginning of the timestep
     # weather data is hourly, simulation runs sub-hourly
@@ -266,15 +266,18 @@ def solve(init,problemInputs,solverInputs):
         
         if init['cosimulation'] == True:
           if str(g.dir).lower() == 'roof':
+            airTemp = fmuModel.get('TOutEnv')
             tankTemp = fmuModel.get('CoreTTankTemp')
           else:
+            airTemp = fmuModel.get('TOutEnv')
             tankTemp = fmuModel.get(str(g.dir).title()+'TTankTemp')
           # print 'tankTemp = '+str(tankTemp)
           # set up previous temperature
           if (not previousDayTime):
-            solverInputs['previousWaterModuleT'] = solverInputs['inletAirTemp']*np.ones(g.nY)
+            solverInputs['previousWaterModuleT'] = tankTemp*np.ones(g.nY)
             solverInputs['previousWaterTubeT'] = tankTemp*np.ones(g.nY)
           else:
+            g.data['waterModuleT'][0] = airTemp
             g.data['waterTubeT'][0] = tankTemp
             # print 'g.data waterTubeT = '+str(g.data['waterTubeT'])
             solverInputs['previousWaterModuleT'] = g.data['waterModuleT']
@@ -319,8 +322,11 @@ def solve(init,problemInputs,solverInputs):
               fmuModel.set('BITCoPT'+str(direction).title()+'WindowSolarInside',intRadHeatGain)
               # Set FMU inputs for hot water into BEM
               if init['SHW'] == True:
-                fmuModel.set(str(direction)+'FluidFlow_kgps',g.nX*solverInputs['waterFlowRate'])
                 fmuModel.set(str(direction)+'FluidTemperature',results['waterModule'][-1])
+                if daytime:
+                  fmuModel.set(str(direction)+'FluidFlow_kgps',g.nX*solverInputs['waterFlowRate'])
+                else:
+                  fmuModel.set(str(direction)+'FluidFlow_kgps',0)
               # Retired FMU inputs
               # fmuModel.set('SouthYaw',yaw)
               # fmuModel.set('SouthPitch',pitch)
@@ -648,13 +654,13 @@ if __name__ == "__main__":
   # Simulation time parameters
   'timeStepsPerHour':6,
   'startDay':0,
-  'days':360,
+  'days':30,
   'numProcs':1, # Do not change this value for now
   'useSunlitFraction':True,
   # System parameters
   'systemName':'BITCoPT',
   'cosimulation':True,
-  'cosimDirections':['South','East','West','Core'], # all options are ['South','East','West','Core']
+  'cosimDirections':['South','East','West','Roof'], # all options are ['South','East','West','Roof']
   'SHW':True, # Is the hot fluid used in the building?
   'tilt':tilt,
   # Necessary input files - UPDATE THESE FOR YOUR CASE
