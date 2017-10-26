@@ -7,7 +7,7 @@ try:
 except modeleditor.IDDAlreadySetError as e:
   pass
 
-fname = "./Export_4_ColdStart.idf"
+fname = "./Export_6_HardSizedBaseboard_CoSim.idf"
 idf1 = IDF(fname)
 
 # idf1.printidf()
@@ -364,6 +364,8 @@ outputVariables = [
 	'Zone Mean Radiant Temperature',
 	'Zone Mean Air Humidity Ratio',
 	'Zone Mechanical Ventilation Air Changes per Hour',
+	'Zone Predicted Sensible Load to Heating Setpoint Heat Transfer Rate',
+	'Zone Predicted Sensible Load to Cooling Setpoint Heat Transfer Rate'
 	'People Occupant Count',
 	'Zone Mean Air Temperature',
 	'Zone Outdoor Air Drybulb Temperature',
@@ -383,7 +385,22 @@ outputVariables = [
 	'Plant Temperature Source Component Source Temperature',
 	'Plant Temperature Source Component Heat Transfer Rate',
 	'Plant Temperature Source Component Heat Transfer Energy',
+	'Pump Mass Flow Rate',
 	'Water Heater Tank Temperature',
+	'Water Heater Source Side Mass Flow Rate',  
+	'Water Heater Source Side Inlet Temperature',  
+	'Water Heater Source Side Outlet Temperature',  
+	'Water Heater Source Side Heat Transfer Rate', 
+	'Water Heater Tank Temperature', 
+	'Water Heater Use Side Mass Flow Rate', 
+	'Water Heater Use Side Inlet Temperature', 
+	'Water Heater Use Side Outlet Temperature', 
+	'Water Heater Use Side Heat Transfer Rate', 
+	'Water Heater Cycle On Count', 
+	'Water Heater Net Heat Transfer Rate', 
+	'Water Heater Unmet Demand Heat Transfer Rate', 
+	'Water Heater Heating Rate', 
+	'Water Heater Total Demand Heat Transfer Rate',
 	'Water Use Equipment Hot Water Mass Flow Rate',
 	'Water Use Equipment Cold Water Mass Flow Rate',
 	'Water Use Equipment Total Mass Flow Rate',
@@ -405,7 +422,25 @@ outputVariables = [
 	'Baseboard Total Heating Rate',
 	'Baseboard Hot Water Mass Flow Rate',
 	'Baseboard Water Inlet Temperature',
-	'Baseboard Water Outlet Temperature'
+	'Baseboard Water Outlet Temperature',
+	'Boiler Heating Rate',
+	'Boiler Heating Energy',
+	'Boiler Gas Rate',
+	'Boiler Gas Energy',
+	'Boiler Inlet Temperature',
+	'Boiler Outlet Temperature',
+	'Boiler Mass Flow Rate',
+	'Air System Hot Water Energy',
+	'Air System Steam Energy',
+	'Air System Chilled Water Energy',
+	'Air System Electric Energy',
+	'Air System Gas Energy',
+	'Air System Cooling Coil Total Cooling Energy',
+	'Air System Heating Coil Total Heating Energy',
+	'Air System DX Heating Coil Electric Energy',
+	'Air System DX Cooling Coil Electric Energy',
+	'Air System Heating Coil Electric Energy',
+	'Air System Heating Coil Gas Energy',
 	]
 
 # Get all output variables already in the file
@@ -440,8 +475,8 @@ else:
 # print 'All output variables:'
 # print allOutputs
 
-SQLite = idf1.idfobjects['OUTPUT:SQLITE'][-1]
-SQLite.Option_Type = ''
+# SQLite = idf1.idfobjects['OUTPUT:SQLITE'][-1]
+# SQLite.Option_Type = ''
 
 print '_________________________________________________________________\n'
 
