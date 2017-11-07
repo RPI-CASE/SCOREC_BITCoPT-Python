@@ -181,7 +181,10 @@ def readIDFFile(filename,name,directions,iddFile,useSunlit = True):
       direction = 'Core'
     for window in windows:
       if str(name+direction).lower() in str(window.Name).replace(' ','').lower():
-        coords = [np.array([window.Vertex_1_Xcoordinate,window.Vertex_1_Ycoordinate,window.Vertex_1_Zcoordinate],float),np.array([window.Vertex_2_Xcoordinate,window.Vertex_2_Ycoordinate,window.Vertex_2_Zcoordinate],float),np.array([window.Vertex_3_Xcoordinate,window.Vertex_3_Ycoordinate,window.Vertex_3_Zcoordinate],float),np.array([window.Vertex_4_Xcoordinate,window.Vertex_4_Ycoordinate,window.Vertex_4_Zcoordinate],float)]
+        if str(direction).lower() == 'core':
+          coords = [np.array([window.Vertex_1_Xcoordinate,window.Vertex_1_Ycoordinate,window.Vertex_1_Zcoordinate],float),np.array([window.Vertex_2_Xcoordinate,window.Vertex_2_Ycoordinate,(window.Vertex_2_Zcoordinate+0.05)],float),np.array([window.Vertex_3_Xcoordinate,window.Vertex_3_Ycoordinate,(window.Vertex_3_Zcoordinate+0.05)],float),np.array([window.Vertex_4_Xcoordinate,window.Vertex_4_Ycoordinate,window.Vertex_4_Zcoordinate],float)]
+        else:
+          coords = [np.array([window.Vertex_1_Xcoordinate,window.Vertex_1_Ycoordinate,window.Vertex_1_Zcoordinate],float),np.array([window.Vertex_2_Xcoordinate,window.Vertex_2_Ycoordinate,window.Vertex_2_Zcoordinate],float),np.array([window.Vertex_3_Xcoordinate,window.Vertex_3_Ycoordinate,window.Vertex_3_Zcoordinate],float),np.array([window.Vertex_4_Xcoordinate,window.Vertex_4_Ycoordinate,window.Vertex_4_Zcoordinate],float)]
         if vertex_entry_direction == 'Counterclockwise':
           coords.reverse()
         coords = [coords[(i + coord_offset) % 4] for i in range(len(coords))]

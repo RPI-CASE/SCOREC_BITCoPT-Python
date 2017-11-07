@@ -180,6 +180,19 @@ def solve(init,problemInputs,solverInputs):
 
     sunPosition = solar.getSunPosition(tsToSec)
 
+    # Change cavity airflow rates based on the time of the year
+    if init['seasonalAirflow'] == True:
+      if tsToHour < 79*24: # Spring Equinox (March 20th), 79th day of the year times hours in a day
+        solverInputs['airFlowRate'] = 0.25*1.0*0.16*1.200 # Airflow during winter
+      elif tsToHour < 265*24: # Fall Equinox (September 22nd), 265 day of the year
+        solverInputs['airFlowRate'] = 1.0*0.16*1.200 # Airflow during summer
+      else:
+        solverInputs['airFlowRate'] = 0.25*1.0*0.16*1.200 # Back to around flow during winter
+
+    # Change water flowrate dynamically 
+    if init['dynamicFlowRate'] == True:
+      pass
+
     for g in geometry:
       if g.facadeType != 'window':
         continue
@@ -277,11 +290,12 @@ def solve(init,problemInputs,solverInputs):
             solverInputs['previousWaterModuleT'] = tankTemp*np.ones(g.nY)
             solverInputs['previousWaterTubeT'] = tankTemp*np.ones(g.nY)
           else:
-            g.data['waterModuleT'][0] = airTemp
+            # g.data['waterModuleT'][0] = tankTemp
             g.data['waterTubeT'][0] = tankTemp
             # print 'g.data waterTubeT = '+str(g.data['waterTubeT'])
             solverInputs['previousWaterModuleT'] = g.data['waterModuleT']
             solverInputs['previousWaterTubeT'] = g.data['waterTubeT']
+
         else:
           # set up previous temperature
           if (not previousDayTime):
@@ -662,12 +676,14 @@ if __name__ == "__main__":
   'cosimulation':True,
   'cosimDirections':['South','East','West','Roof'], # all options are ['South','East','West','Roof']
   'SHW':True, # Is the hot fluid used in the building?
+  'seasonalAirflow':True, # Change cavity airflow rate based on time of the year, see conditional statements for further control
+  'dynamicFlowRate':False,
   'tilt':tilt,
   # Necessary input files - UPDATE THESE FOR YOUR CASE
   'TMY':'data/TMY/USA_NY_CentralPark.epw', # weather file
   'useIDFGeom':True, # Reads goemetry directly from IDF file
-  'geomfile':'data/idf/Export_6_HardSizedBaseboard_CoSim.idf', 
-  'fmuModelName':'./data/fmu/Export_6_HardSizedBaseboard_CoSim.fmu',
+  'geomfile':'data/idf/Export_7_withDHW_CoSim.idf', 
+  'fmuModelName':'./data/fmu/Export_7_withDHW_CoSim.fmu',
   'lightingFile':'./data/lighting/CosimLSchedz_0_20171020_lat41.csv',
   'idd':'C:/openstudio-2.2.0/EnergyPlus/Energy+.idd',
   # Output parameters

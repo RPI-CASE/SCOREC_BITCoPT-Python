@@ -7,7 +7,7 @@ try:
 except modeleditor.IDDAlreadySetError as e:
   pass
 
-fname = "./Export_6_HardSizedBaseboard_CoSim.idf"
+fname = "./Export_7_withDHW.idf"
 idf1 = IDF(fname)
 
 # idf1.printidf()
