@@ -161,12 +161,9 @@ def solve(init,problemInputs,solverInputs):
     # interpolate weather data values onces as the beginning of the timestep
     # weather data is hourly, simulation runs sub-hourly
     dniForTS = np.interp(tsToHour,interpTime,DNI)
-    dhiForTS = np.interp(tsToHour,interpTime,DHI) # Consider adding some heat to cavity air from DHI
+    dhiForTS = np.interp(tsToHour,interpTime,DHI) # Consider adding some heat to cavity air from DHI...isn't it already?
     exteriorAirTempForTS = np.interp(tsToHour,interpTime,exteriorAirTemp)
     # print "exterior air temperature =", exteriorAirTempForTS
-
-    # define inlet cavity air temperature to use the outdoor drybulb (or indoor drybulb, later)
-    solverInputs['inletAirTemp'] = exteriorAirTempForTS
 
     # its daytime if DNI > 0 for three straight hours
     # this logic is suspect at best
@@ -174,24 +171,22 @@ def solve(init,problemInputs,solverInputs):
       # daytime = (DNI[ts-startStep-1]+DNI[ts-startStep]+DNI[ts-startStep+1] > 0)
       daytime = (np.interp(tsToHour-dt,interpTime,DNI)+dniForTS+np.interp(tsToHour+dt,interpTime,DNI) > 0)
 
-    # once the first daytime hits, we are done initializing
-    # time = solverInputs['dt']*ts
+    # define inlet cavity air temperature to use the outdoor drybulb (or indoor drybulb, later)
+    solverInputs['inletAirTemp'] = exteriorAirTempForTS
+    # define exterior air temperature from whether file
     solverInputs['exteriorAirTemp'] = exteriorAirTempForTS
 
+    # Get sun postion based on seconds 
     sunPosition = solar.getSunPosition(tsToSec)
 
     # Change cavity airflow rates based on the time of the year
     if init['seasonalAirflow'] == True:
       if tsToHour < 79*24: # Spring Equinox (March 20th), 79th day of the year times hours in a day
-        solverInputs['airFlowRate'] = 0.25*1.0*0.16*1.200 # Airflow during winter
+        solverInputs['airFlowRate'] = 0.1*solverInputs['maxAirFlowRate'] # Airflow during winter
       elif tsToHour < 265*24: # Fall Equinox (September 22nd), 265 day of the year
-        solverInputs['airFlowRate'] = 1.0*0.16*1.200 # Airflow during summer
+        solverInputs['airFlowRate'] = solverInputs['maxAirFlowRate'] # Airflow during summer
       else:
-        solverInputs['airFlowRate'] = 0.25*1.0*0.16*1.200 # Back to around flow during winter
-
-    # Change water flowrate dynamically 
-    if init['dynamicFlowRate'] == True:
-      pass
+        solverInputs['airFlowRate'] = 0.1*solverInputs['maxAirFlowRate'] # Back to around flow during winter
 
     for g in geometry:
       if g.facadeType != 'window':
@@ -277,6 +272,24 @@ def solve(init,problemInputs,solverInputs):
         solverInputs['Q_c'] = radGain['cavRadHeatGain']*icsolar.moduleHeight*icsolar.moduleWidth
         solverInputs['numModules'] = g.nY
         
+        # Change water flowrate dynamically 
+        if init['dynamicFlowRate'] == True:
+          epcUpperThreshold = 20.0
+          epcLowerThreshold = 1.0
+          if facadeData['epc'][index][ts-startStep] > epcUpperThreshold:
+            flowFactor = 1.0
+          elif facadeData['epc'][index][ts-startStep] > epcLowerThreshold:
+            flowFactor = facadeData['epc'][index][ts-startStep] / epcUpperThreshold
+          else:
+            flowFactor = 0.01
+          solverInputs['waterFlowRate'] = solverInputs['maxWaterFlowRate'] * flowFactor
+          if tsToHour%1 == 0 and False:
+            print 'For hour '+str(tsToHour)
+            print 'DNI = '+str(g.data['DNI'][int(g.nY/2)])
+            print 'For the direction '+str(g.dir)+' the EPC = ' + str(facadeData['epc'][index][ts-startStep])
+            print 'For the direction '+str(g.dir)+' the florFactor = ' + str(flowFactor)
+            print 'For the direction '+str(g.dir)+' the waterFlowRate = ' + str(solverInputs['waterFlowRate'])
+          
         if init['cosimulation'] == True:
           if str(g.dir).lower() == 'roof':
             airTemp = fmuModel.get('TOutEnv')
@@ -668,7 +681,7 @@ if __name__ == "__main__":
   # Simulation time parameters
   'timeStepsPerHour':6,
   'startDay':0,
-  'days':30,
+  'days':365,
   'numProcs':1, # Do not change this value for now
   'useSunlitFraction':True,
   # System parameters
@@ -677,7 +690,7 @@ if __name__ == "__main__":
   'cosimDirections':['South','East','West','Roof'], # all options are ['South','East','West','Roof']
   'SHW':True, # Is the hot fluid used in the building?
   'seasonalAirflow':True, # Change cavity airflow rate based on time of the year, see conditional statements for further control
-  'dynamicFlowRate':False,
+  'dynamicFlowRate':True,
   'tilt':tilt,
   # Necessary input files - UPDATE THESE FOR YOUR CASE
   'TMY':'data/TMY/USA_NY_CentralPark.epw', # weather file
@@ -704,8 +717,10 @@ if __name__ == "__main__":
   'inletWaterTemp':20.0,
   'inletAirTemp':15.0,
   'interiorAirTemp':20.0,
-  'waterFlowRate':1.6*1000.*1e-6, # 1.6 mL/s in kg/s
+  'maxWaterFlowRate':1.0*1000.*1e-6, 
+  'waterFlowRate':1.0*1000.*1e-6, # 1.6 mL/s in kg/s
   # 2.0 m/s * 0.16, cross sectional area, times density in kg/s
+  'maxAirFlowRate':1.0*0.16*1.200,# velocity (m), cross sectional area (m^2), times density in kg/m^3
   'airFlowRate':1.0*0.16*1.200,
   # data for each facade (one number for each facade)
   'facadeDataNames':['epc','glaze','aoi','yaw','pitch',
