@@ -693,10 +693,10 @@ if __name__ == "__main__":
   'dynamicFlowRate':True,
   'tilt':tilt,
   # Necessary input files - UPDATE THESE FOR YOUR CASE
-  'TMY':'data/TMY/USA_AZ_Phoenix.epw', # weather file
+  'TMY':'data/TMY/USA_NY_CentralPark.epw', # weather file
   'useIDFGeom':True, # Reads goemetry directly from IDF file
-  'geomfile':'data/idf/Export_7_PHX_withDHW_CoSim.idf', 
-  'fmuModelName':'./data/fmu/Export_7_PHX_withDHW_CoSim.fmu',
+  'geomfile':'data/idf/Export_8_withPreheatDHW_CoSim.idf', 
+  'fmuModelName':'./data/fmu/Export_8_withPreheatDHW_CoSim.fmu',
   'lightingFile':'./data/lighting/CosimLSchedz_0_20171020_lat41.csv',
   'idd':'C:/openstudio-2.2.0/EnergyPlus/Energy+.idd',
   # Output parameters
